@@ -46,6 +46,7 @@ flutter run -d chrome `
 - [用户指南](docs/user-guide.md)：完整操作、快捷键、格式、隐私与限制
 - [开发指南](docs/development.md)：环境、代码生成、测试、Windows/Web 构建与部署
 - [架构决策](docs/adr/0001-flutter-platform-shell-rust-subtitle-core.md)：Flutter 与 Rust 的职责边界
+- [Liquid Glass 任务计划](docs/agents/liquid-glass-easy-plan.md)：`liquid_glass_easy` 的分阶段迁移任务与验收边界
 - [领域词汇](CONTEXT.md)：项目使用的核心术语
 - [GitHub Issues](https://github.com/Nicoeevee/SSSubtitle/issues)：需求、缺陷与进度
 

@@ -7,8 +7,8 @@ import '../frb_generated.dart';
 
 import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
-// These functions are ignored because they are not marked as `pub`: `candidate_score`, `decode_subtitle`, `decode_utf16`, `normalized_title`, `validate_subtitle_text`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`
+// These functions are ignored because they are not marked as `pub`: `decode_subtitle`, `decode_utf16`, `normalized_title`, `validate_subtitle_text`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_fields_are_eq`, `assert_fields_are_eq`, `assert_fields_are_eq`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`
 
 String deriveSearchName({required String filename}) =>
     RustLib.instance.api.crateApiSimpleDeriveSearchName(filename: filename);
@@ -22,24 +22,6 @@ String computeCid({
 }) => RustLib.instance.api.crateApiSimpleComputeCid(
   fileSize: fileSize,
   chunks: chunks,
-);
-
-SubtitlePreviewPage subtitlePreviewPage({
-  required List<int> bytes,
-  required int page,
-  required String format,
-}) => RustLib.instance.api.crateApiSimpleSubtitlePreviewPage(
-  bytes: bytes,
-  page: page,
-  format: format,
-);
-
-List<RankedSubtitleCandidate> rankSubtitleCandidates({
-  required List<SubtitleCandidate> candidates,
-  required CandidateRankingContext context,
-}) => RustLib.instance.api.crateApiSimpleRankSubtitleCandidates(
-  candidates: candidates,
-  context: context,
 );
 
 class ByteRange {
@@ -60,59 +42,6 @@ class ByteRange {
           length == other.length;
 }
 
-class CandidateRankingContext {
-  final String searchName;
-  final String? videoCid;
-  final BigInt? videoDurationMillis;
-  final List<String> preferredLanguages;
-  final List<String> preferredFormats;
-
-  const CandidateRankingContext({
-    required this.searchName,
-    this.videoCid,
-    this.videoDurationMillis,
-    required this.preferredLanguages,
-    required this.preferredFormats,
-  });
-
-  @override
-  int get hashCode =>
-      searchName.hashCode ^
-      videoCid.hashCode ^
-      videoDurationMillis.hashCode ^
-      preferredLanguages.hashCode ^
-      preferredFormats.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CandidateRankingContext &&
-          runtimeType == other.runtimeType &&
-          searchName == other.searchName &&
-          videoCid == other.videoCid &&
-          videoDurationMillis == other.videoDurationMillis &&
-          preferredLanguages == other.preferredLanguages &&
-          preferredFormats == other.preferredFormats;
-}
-
-class RankedSubtitleCandidate {
-  final SubtitleCandidate candidate;
-  final PlatformInt64 score;
-
-  const RankedSubtitleCandidate({required this.candidate, required this.score});
-
-  @override
-  int get hashCode => candidate.hashCode ^ score.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is RankedSubtitleCandidate &&
-          runtimeType == other.runtimeType &&
-          candidate == other.candidate &&
-          score == other.score;
-}
-
 class SampleChunk {
   final BigInt offset;
   final Uint8List bytes;
@@ -129,92 +58,6 @@ class SampleChunk {
           runtimeType == other.runtimeType &&
           offset == other.offset &&
           bytes == other.bytes;
-}
-
-class SubtitleCandidate {
-  final String id;
-  final String name;
-  final String? cid;
-  final BigInt? durationMillis;
-  final String? language;
-  final String format;
-  final PlatformInt64 upstreamScore;
-  final bool fingerprintMatch;
-
-  const SubtitleCandidate({
-    required this.id,
-    required this.name,
-    this.cid,
-    this.durationMillis,
-    this.language,
-    required this.format,
-    required this.upstreamScore,
-    required this.fingerprintMatch,
-  });
-
-  @override
-  int get hashCode =>
-      id.hashCode ^
-      name.hashCode ^
-      cid.hashCode ^
-      durationMillis.hashCode ^
-      language.hashCode ^
-      format.hashCode ^
-      upstreamScore.hashCode ^
-      fingerprintMatch.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SubtitleCandidate &&
-          runtimeType == other.runtimeType &&
-          id == other.id &&
-          name == other.name &&
-          cid == other.cid &&
-          durationMillis == other.durationMillis &&
-          language == other.language &&
-          format == other.format &&
-          upstreamScore == other.upstreamScore &&
-          fingerprintMatch == other.fingerprintMatch;
-}
-
-class SubtitlePreviewPage {
-  final List<String> lines;
-  final int page;
-  final int pageSize;
-  final int totalLines;
-  final int totalPages;
-  final String encoding;
-
-  const SubtitlePreviewPage({
-    required this.lines,
-    required this.page,
-    required this.pageSize,
-    required this.totalLines,
-    required this.totalPages,
-    required this.encoding,
-  });
-
-  @override
-  int get hashCode =>
-      lines.hashCode ^
-      page.hashCode ^
-      pageSize.hashCode ^
-      totalLines.hashCode ^
-      totalPages.hashCode ^
-      encoding.hashCode;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SubtitlePreviewPage &&
-          runtimeType == other.runtimeType &&
-          lines == other.lines &&
-          page == other.page &&
-          pageSize == other.pageSize &&
-          totalLines == other.totalLines &&
-          totalPages == other.totalPages &&
-          encoding == other.encoding;
 }
 
 class VideoSamplePlan {

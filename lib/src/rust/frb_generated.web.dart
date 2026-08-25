@@ -7,7 +7,7 @@
 // ignore_for_file: argument_type_not_assignable
 
 import 'api/simple.dart';
-import 'api/xunlei.dart';
+import 'api/workflow.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -28,27 +28,10 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
-  bool dco_decode_bool(dynamic raw);
-
-  @protected
-  CandidateRankingContext dco_decode_box_autoadd_candidate_ranking_context(
-    dynamic raw,
-  );
-
-  @protected
-  double dco_decode_box_autoadd_f_64(dynamic raw);
-
-  @protected
-  BigInt dco_decode_box_autoadd_u_64(dynamic raw);
-
-  @protected
   ByteRange dco_decode_byte_range(dynamic raw);
 
   @protected
-  CandidateRankingContext dco_decode_candidate_ranking_context(dynamic raw);
-
-  @protected
-  double dco_decode_f_64(dynamic raw);
+  int dco_decode_i_32(dynamic raw);
 
   @protected
   PlatformInt64 dco_decode_i_64(dynamic raw);
@@ -60,45 +43,45 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ByteRange> dco_decode_list_byte_range(dynamic raw);
 
   @protected
-  List<int> dco_decode_list_prim_u_8_loose(dynamic raw);
+  List<MatchReason> dco_decode_list_match_reason(dynamic raw);
 
   @protected
   Uint8List dco_decode_list_prim_u_8_strict(dynamic raw);
 
   @protected
-  List<RankedSubtitleCandidate> dco_decode_list_ranked_subtitle_candidate(
+  List<SampleChunk> dco_decode_list_sample_chunk(dynamic raw);
+
+  @protected
+  List<WorkflowSubtitleCandidate> dco_decode_list_workflow_subtitle_candidate(
     dynamic raw,
   );
 
   @protected
-  List<SampleChunk> dco_decode_list_sample_chunk(dynamic raw);
+  MatchReason dco_decode_match_reason(dynamic raw);
 
   @protected
-  List<SubtitleCandidate> dco_decode_list_subtitle_candidate(dynamic raw);
-
-  @protected
-  List<XunleiCandidate> dco_decode_list_xunlei_candidate(dynamic raw);
+  MatchReasonKind dco_decode_match_reason_kind(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
 
   @protected
-  double? dco_decode_opt_box_autoadd_f_64(dynamic raw);
-
-  @protected
-  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw);
-
-  @protected
-  RankedSubtitleCandidate dco_decode_ranked_subtitle_candidate(dynamic raw);
-
-  @protected
   SampleChunk dco_decode_sample_chunk(dynamic raw);
 
   @protected
-  SubtitleCandidate dco_decode_subtitle_candidate(dynamic raw);
+  SubtitleArtifact dco_decode_subtitle_artifact(dynamic raw);
 
   @protected
-  SubtitlePreviewPage dco_decode_subtitle_preview_page(dynamic raw);
+  SubtitleFailure dco_decode_subtitle_failure(dynamic raw);
+
+  @protected
+  SubtitleFailureKind dco_decode_subtitle_failure_kind(dynamic raw);
+
+  @protected
+  SubtitleFormat dco_decode_subtitle_format(dynamic raw);
+
+  @protected
+  SubtitleOperation dco_decode_subtitle_operation(dynamic raw);
 
   @protected
   int dco_decode_u_32(dynamic raw);
@@ -116,35 +99,21 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   VideoSamplePlan dco_decode_video_sample_plan(dynamic raw);
 
   @protected
-  XunleiCandidate dco_decode_xunlei_candidate(dynamic raw);
+  WorkflowSubtitleCandidate dco_decode_workflow_subtitle_candidate(dynamic raw);
+
+  @protected
+  WorkflowSubtitlePreviewPage dco_decode_workflow_subtitle_preview_page(
+    dynamic raw,
+  );
 
   @protected
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer);
-
-  @protected
-  CandidateRankingContext sse_decode_box_autoadd_candidate_ranking_context(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer);
-
-  @protected
-  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
-
-  @protected
   ByteRange sse_decode_byte_range(SseDeserializer deserializer);
 
   @protected
-  CandidateRankingContext sse_decode_candidate_ranking_context(
-    SseDeserializer deserializer,
-  );
-
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer);
+  int sse_decode_i_32(SseDeserializer deserializer);
 
   @protected
   PlatformInt64 sse_decode_i_64(SseDeserializer deserializer);
@@ -156,53 +125,47 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   List<ByteRange> sse_decode_list_byte_range(SseDeserializer deserializer);
 
   @protected
-  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer);
+  List<MatchReason> sse_decode_list_match_reason(SseDeserializer deserializer);
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer);
 
   @protected
-  List<RankedSubtitleCandidate> sse_decode_list_ranked_subtitle_candidate(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   List<SampleChunk> sse_decode_list_sample_chunk(SseDeserializer deserializer);
 
   @protected
-  List<SubtitleCandidate> sse_decode_list_subtitle_candidate(
+  List<WorkflowSubtitleCandidate> sse_decode_list_workflow_subtitle_candidate(
     SseDeserializer deserializer,
   );
 
   @protected
-  List<XunleiCandidate> sse_decode_list_xunlei_candidate(
-    SseDeserializer deserializer,
-  );
+  MatchReason sse_decode_match_reason(SseDeserializer deserializer);
+
+  @protected
+  MatchReasonKind sse_decode_match_reason_kind(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
 
   @protected
-  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer);
-
-  @protected
-  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer);
-
-  @protected
-  RankedSubtitleCandidate sse_decode_ranked_subtitle_candidate(
-    SseDeserializer deserializer,
-  );
-
-  @protected
   SampleChunk sse_decode_sample_chunk(SseDeserializer deserializer);
 
   @protected
-  SubtitleCandidate sse_decode_subtitle_candidate(SseDeserializer deserializer);
+  SubtitleArtifact sse_decode_subtitle_artifact(SseDeserializer deserializer);
 
   @protected
-  SubtitlePreviewPage sse_decode_subtitle_preview_page(
+  SubtitleFailure sse_decode_subtitle_failure(SseDeserializer deserializer);
+
+  @protected
+  SubtitleFailureKind sse_decode_subtitle_failure_kind(
     SseDeserializer deserializer,
   );
+
+  @protected
+  SubtitleFormat sse_decode_subtitle_format(SseDeserializer deserializer);
+
+  @protected
+  SubtitleOperation sse_decode_subtitle_operation(SseDeserializer deserializer);
 
   @protected
   int sse_decode_u_32(SseDeserializer deserializer);
@@ -220,40 +183,26 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   VideoSamplePlan sse_decode_video_sample_plan(SseDeserializer deserializer);
 
   @protected
-  XunleiCandidate sse_decode_xunlei_candidate(SseDeserializer deserializer);
+  WorkflowSubtitleCandidate sse_decode_workflow_subtitle_candidate(
+    SseDeserializer deserializer,
+  );
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer);
+  WorkflowSubtitlePreviewPage sse_decode_workflow_subtitle_preview_page(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer);
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
-  void sse_encode_bool(bool self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_box_autoadd_candidate_ranking_context(
-    CandidateRankingContext self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
-
-  @protected
   void sse_encode_byte_range(ByteRange self, SseSerializer serializer);
 
   @protected
-  void sse_encode_candidate_ranking_context(
-    CandidateRankingContext self,
-    SseSerializer serializer,
-  );
-
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer);
+  void sse_encode_i_32(int self, SseSerializer serializer);
 
   @protected
   void sse_encode_i_64(PlatformInt64 self, SseSerializer serializer);
@@ -268,17 +217,14 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_prim_u_8_loose(List<int> self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_list_prim_u_8_strict(
-    Uint8List self,
+  void sse_encode_list_match_reason(
+    List<MatchReason> self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_list_ranked_subtitle_candidate(
-    List<RankedSubtitleCandidate> self,
+  void sse_encode_list_prim_u_8_strict(
+    Uint8List self,
     SseSerializer serializer,
   );
 
@@ -289,14 +235,17 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_list_subtitle_candidate(
-    List<SubtitleCandidate> self,
+  void sse_encode_list_workflow_subtitle_candidate(
+    List<WorkflowSubtitleCandidate> self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_list_xunlei_candidate(
-    List<XunleiCandidate> self,
+  void sse_encode_match_reason(MatchReason self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_match_reason_kind(
+    MatchReasonKind self,
     SseSerializer serializer,
   );
 
@@ -304,29 +253,35 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_opt_String(String? self, SseSerializer serializer);
 
   @protected
-  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer);
-
-  @protected
-  void sse_encode_ranked_subtitle_candidate(
-    RankedSubtitleCandidate self,
-    SseSerializer serializer,
-  );
-
-  @protected
   void sse_encode_sample_chunk(SampleChunk self, SseSerializer serializer);
 
   @protected
-  void sse_encode_subtitle_candidate(
-    SubtitleCandidate self,
+  void sse_encode_subtitle_artifact(
+    SubtitleArtifact self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_subtitle_preview_page(
-    SubtitlePreviewPage self,
+  void sse_encode_subtitle_failure(
+    SubtitleFailure self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_subtitle_failure_kind(
+    SubtitleFailureKind self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_subtitle_format(
+    SubtitleFormat self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_subtitle_operation(
+    SubtitleOperation self,
     SseSerializer serializer,
   );
 
@@ -349,13 +304,19 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
-  void sse_encode_xunlei_candidate(
-    XunleiCandidate self,
+  void sse_encode_workflow_subtitle_candidate(
+    WorkflowSubtitleCandidate self,
     SseSerializer serializer,
   );
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer);
+  void sse_encode_workflow_subtitle_preview_page(
+    WorkflowSubtitlePreviewPage self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_bool(bool self, SseSerializer serializer);
 }
 
 // Section: wire_class

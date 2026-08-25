@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.13.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -321703386;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1509219725;
 
 // Section: executor
 
@@ -47,6 +47,43 @@ flutter_rust_bridge::frb_generated_default_handler!();
 
 // Section: wire_funcs
 
+fn wire__crate__api__workflow__acquire_subtitle_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
+    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
+    rust_vec_len_: i32,
+    data_len_: i32,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
+        flutter_rust_bridge::for_generated::TaskInfo {
+            debug_name: "acquire_subtitle",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
+        },
+        move || {
+            let message = unsafe {
+                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
+                    ptr_,
+                    rust_vec_len_,
+                    data_len_,
+                )
+            };
+            let mut deserializer =
+                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
+            let api_candidate_id = <String>::sse_decode(&mut deserializer);
+            deserializer.end();
+            move |context| async move {
+                transform_result_sse::<_, crate::api::workflow::SubtitleFailure>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::workflow::acquire_subtitle(api_candidate_id).await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
+        },
+    )
+}
 fn wire__crate__api__simple__compute_cid_impl(
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -105,43 +142,6 @@ fn wire__crate__api__simple__derive_search_name_impl(
                 let output_ok = Ok::<_, ()>(crate::api::simple::derive_search_name(api_filename))?;
                 std::result::Result::Ok(output_ok)
             })())
-        },
-    )
-}
-fn wire__crate__api__xunlei__download_xunlei_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "download_xunlei",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_candidate_id = <String>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, String>(
-                    (move || async move {
-                        let output_ok =
-                            crate::api::xunlei::download_xunlei(api_candidate_id).await?;
-                        std::result::Result::Ok(output_ok)
-                    })()
-                    .await,
-                )
-            }
         },
     )
 }
@@ -209,43 +209,7 @@ fn wire__crate__api__simple__plan_video_sample_impl(
         },
     )
 }
-fn wire__crate__api__simple__rank_subtitle_candidates_impl(
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "rank_subtitle_candidates",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_candidates =
-                <Vec<crate::api::simple::SubtitleCandidate>>::sse_decode(&mut deserializer);
-            let api_context =
-                <crate::api::simple::CandidateRankingContext>::sse_decode(&mut deserializer);
-            deserializer.end();
-            transform_result_sse::<_, ()>((move || {
-                let output_ok = Ok::<_, ()>(crate::api::simple::rank_subtitle_candidates(
-                    api_candidates,
-                    api_context,
-                ))?;
-                std::result::Result::Ok(output_ok)
-            })())
-        },
-    )
-}
-fn wire__crate__api__xunlei__search_xunlei_impl(
+fn wire__crate__api__workflow__preview_subtitle_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
@@ -253,7 +217,7 @@ fn wire__crate__api__xunlei__search_xunlei_impl(
 ) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "search_xunlei",
+            debug_name: "preview_subtitle",
             port: Some(port_),
             mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
@@ -267,12 +231,15 @@ fn wire__crate__api__xunlei__search_xunlei_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_query = <String>::sse_decode(&mut deserializer);
+            let api_candidate_id = <String>::sse_decode(&mut deserializer);
+            let api_page = <u32>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
-                transform_result_sse::<_, String>(
+                transform_result_sse::<_, crate::api::workflow::SubtitleFailure>(
                     (move || async move {
-                        let output_ok = crate::api::xunlei::search_xunlei(api_query).await?;
+                        let output_ok =
+                            crate::api::workflow::preview_subtitle(api_candidate_id, api_page)
+                                .await?;
                         std::result::Result::Ok(output_ok)
                     })()
                     .await,
@@ -281,16 +248,17 @@ fn wire__crate__api__xunlei__search_xunlei_impl(
         },
     )
 }
-fn wire__crate__api__simple__subtitle_preview_page_impl(
+fn wire__crate__api__workflow__search_subtitles_impl(
+    port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
     rust_vec_len_: i32,
     data_len_: i32,
-) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_sync::<flutter_rust_bridge::for_generated::SseCodec, _>(
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
         flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "subtitle_preview_page",
-            port: None,
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Sync,
+            debug_name: "search_subtitles",
+            port: Some(port_),
+            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
         },
         move || {
             let message = unsafe {
@@ -302,15 +270,19 @@ fn wire__crate__api__simple__subtitle_preview_page_impl(
             };
             let mut deserializer =
                 flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_bytes = <Vec<u8>>::sse_decode(&mut deserializer);
-            let api_page = <u32>::sse_decode(&mut deserializer);
-            let api_format = <String>::sse_decode(&mut deserializer);
+            let api_suggested_search_name = <String>::sse_decode(&mut deserializer);
             deserializer.end();
-            transform_result_sse::<_, String>((move || {
-                let output_ok =
-                    crate::api::simple::subtitle_preview_page(api_bytes, api_page, api_format)?;
-                std::result::Result::Ok(output_ok)
-            })())
+            move |context| async move {
+                transform_result_sse::<_, crate::api::workflow::SubtitleFailure>(
+                    (move || async move {
+                        let output_ok =
+                            crate::api::workflow::search_subtitles(api_suggested_search_name)
+                                .await?;
+                        std::result::Result::Ok(output_ok)
+                    })()
+                    .await,
+                )
+            }
         },
     )
 }
@@ -322,13 +294,6 @@ impl SseDecode for String {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut inner = <Vec<u8>>::sse_decode(deserializer);
         return String::from_utf8(inner).unwrap();
-    }
-}
-
-impl SseDecode for bool {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_u8().unwrap() != 0
     }
 }
 
@@ -344,28 +309,10 @@ impl SseDecode for crate::api::simple::ByteRange {
     }
 }
 
-impl SseDecode for crate::api::simple::CandidateRankingContext {
+impl SseDecode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_searchName = <String>::sse_decode(deserializer);
-        let mut var_videoCid = <Option<String>>::sse_decode(deserializer);
-        let mut var_videoDurationMillis = <Option<u64>>::sse_decode(deserializer);
-        let mut var_preferredLanguages = <Vec<String>>::sse_decode(deserializer);
-        let mut var_preferredFormats = <Vec<String>>::sse_decode(deserializer);
-        return crate::api::simple::CandidateRankingContext {
-            search_name: var_searchName,
-            video_cid: var_videoCid,
-            video_duration_millis: var_videoDurationMillis,
-            preferred_languages: var_preferredLanguages,
-            preferred_formats: var_preferredFormats,
-        };
-    }
-}
-
-impl SseDecode for f64 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
     }
 }
 
@@ -400,6 +347,20 @@ impl SseDecode for Vec<crate::api::simple::ByteRange> {
     }
 }
 
+impl SseDecode for Vec<crate::api::workflow::MatchReason> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut len_ = <i32>::sse_decode(deserializer);
+        let mut ans_ = Vec::with_capacity(len_ as usize);
+        for idx_ in 0..len_ {
+            ans_.push(<crate::api::workflow::MatchReason>::sse_decode(
+                deserializer,
+            ));
+        }
+        return ans_;
+    }
+}
+
 impl SseDecode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -407,20 +368,6 @@ impl SseDecode for Vec<u8> {
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
             ans_.push(<u8>::sse_decode(deserializer));
-        }
-        return ans_;
-    }
-}
-
-impl SseDecode for Vec<crate::api::simple::RankedSubtitleCandidate> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = Vec::with_capacity(len_ as usize);
-        for idx_ in 0..len_ {
-            ans_.push(<crate::api::simple::RankedSubtitleCandidate>::sse_decode(
-                deserializer,
-            ));
         }
         return ans_;
     }
@@ -438,31 +385,43 @@ impl SseDecode for Vec<crate::api::simple::SampleChunk> {
     }
 }
 
-impl SseDecode for Vec<crate::api::simple::SubtitleCandidate> {
+impl SseDecode for Vec<crate::api::workflow::WorkflowSubtitleCandidate> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut len_ = <i32>::sse_decode(deserializer);
         let mut ans_ = Vec::with_capacity(len_ as usize);
         for idx_ in 0..len_ {
-            ans_.push(<crate::api::simple::SubtitleCandidate>::sse_decode(
-                deserializer,
-            ));
+            ans_.push(<crate::api::workflow::WorkflowSubtitleCandidate>::sse_decode(deserializer));
         }
         return ans_;
     }
 }
 
-impl SseDecode for Vec<crate::api::xunlei::XunleiCandidate> {
+impl SseDecode for crate::api::workflow::MatchReason {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut len_ = <i32>::sse_decode(deserializer);
-        let mut ans_ = Vec::with_capacity(len_ as usize);
-        for idx_ in 0..len_ {
-            ans_.push(<crate::api::xunlei::XunleiCandidate>::sse_decode(
-                deserializer,
-            ));
-        }
-        return ans_;
+        let mut var_kind = <crate::api::workflow::MatchReasonKind>::sse_decode(deserializer);
+        let mut var_value = <Option<String>>::sse_decode(deserializer);
+        return crate::api::workflow::MatchReason {
+            kind: var_kind,
+            value: var_value,
+        };
+    }
+}
+
+impl SseDecode for crate::api::workflow::MatchReasonKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::workflow::MatchReasonKind::ExactTitle,
+            1 => crate::api::workflow::MatchReasonKind::TitleContains,
+            2 => crate::api::workflow::MatchReasonKind::LanguageMatch,
+            3 => crate::api::workflow::MatchReasonKind::ProviderScore,
+            4 => crate::api::workflow::MatchReasonKind::FingerprintMatch,
+            5 => crate::api::workflow::MatchReasonKind::SupportedFormat,
+            _ => unreachable!("Invalid variant for MatchReasonKind: {}", inner),
+        };
     }
 }
 
@@ -474,40 +433,6 @@ impl SseDecode for Option<String> {
         } else {
             return None;
         }
-    }
-}
-
-impl SseDecode for Option<f64> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        if (<bool>::sse_decode(deserializer)) {
-            return Some(<f64>::sse_decode(deserializer));
-        } else {
-            return None;
-        }
-    }
-}
-
-impl SseDecode for Option<u64> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        if (<bool>::sse_decode(deserializer)) {
-            return Some(<u64>::sse_decode(deserializer));
-        } else {
-            return None;
-        }
-    }
-}
-
-impl SseDecode for crate::api::simple::RankedSubtitleCandidate {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_candidate = <crate::api::simple::SubtitleCandidate>::sse_decode(deserializer);
-        let mut var_score = <i64>::sse_decode(deserializer);
-        return crate::api::simple::RankedSubtitleCandidate {
-            candidate: var_candidate,
-            score: var_score,
-        };
     }
 }
 
@@ -523,46 +448,74 @@ impl SseDecode for crate::api::simple::SampleChunk {
     }
 }
 
-impl SseDecode for crate::api::simple::SubtitleCandidate {
+impl SseDecode for crate::api::workflow::SubtitleArtifact {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_id = <String>::sse_decode(deserializer);
-        let mut var_name = <String>::sse_decode(deserializer);
-        let mut var_cid = <Option<String>>::sse_decode(deserializer);
-        let mut var_durationMillis = <Option<u64>>::sse_decode(deserializer);
-        let mut var_language = <Option<String>>::sse_decode(deserializer);
-        let mut var_format = <String>::sse_decode(deserializer);
-        let mut var_upstreamScore = <i64>::sse_decode(deserializer);
-        let mut var_fingerprintMatch = <bool>::sse_decode(deserializer);
-        return crate::api::simple::SubtitleCandidate {
-            id: var_id,
-            name: var_name,
-            cid: var_cid,
-            duration_millis: var_durationMillis,
-            language: var_language,
+        let mut var_candidateId = <String>::sse_decode(deserializer);
+        let mut var_bytes = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_format = <crate::api::workflow::SubtitleFormat>::sse_decode(deserializer);
+        return crate::api::workflow::SubtitleArtifact {
+            candidate_id: var_candidateId,
+            bytes: var_bytes,
             format: var_format,
-            upstream_score: var_upstreamScore,
-            fingerprint_match: var_fingerprintMatch,
         };
     }
 }
 
-impl SseDecode for crate::api::simple::SubtitlePreviewPage {
+impl SseDecode for crate::api::workflow::SubtitleFailure {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_lines = <Vec<String>>::sse_decode(deserializer);
-        let mut var_page = <u32>::sse_decode(deserializer);
-        let mut var_pageSize = <u32>::sse_decode(deserializer);
-        let mut var_totalLines = <u32>::sse_decode(deserializer);
-        let mut var_totalPages = <u32>::sse_decode(deserializer);
-        let mut var_encoding = <String>::sse_decode(deserializer);
-        return crate::api::simple::SubtitlePreviewPage {
-            lines: var_lines,
-            page: var_page,
-            page_size: var_pageSize,
-            total_lines: var_totalLines,
-            total_pages: var_totalPages,
-            encoding: var_encoding,
+        let mut var_operation = <crate::api::workflow::SubtitleOperation>::sse_decode(deserializer);
+        let mut var_kind = <crate::api::workflow::SubtitleFailureKind>::sse_decode(deserializer);
+        let mut var_detail = <Option<String>>::sse_decode(deserializer);
+        return crate::api::workflow::SubtitleFailure {
+            operation: var_operation,
+            kind: var_kind,
+            detail: var_detail,
+        };
+    }
+}
+
+impl SseDecode for crate::api::workflow::SubtitleFailureKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::workflow::SubtitleFailureKind::InvalidSuggestedSearchName,
+            1 => crate::api::workflow::SubtitleFailureKind::CandidateExpired,
+            2 => crate::api::workflow::SubtitleFailureKind::ProviderUnavailable,
+            3 => crate::api::workflow::SubtitleFailureKind::ArtifactTooLarge,
+            4 => crate::api::workflow::SubtitleFailureKind::ArtifactInvalid,
+            5 => crate::api::workflow::SubtitleFailureKind::PreviewPageOutOfRange,
+            6 => crate::api::workflow::SubtitleFailureKind::Internal,
+            _ => unreachable!("Invalid variant for SubtitleFailureKind: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::workflow::SubtitleFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::workflow::SubtitleFormat::Srt,
+            1 => crate::api::workflow::SubtitleFormat::Ass,
+            2 => crate::api::workflow::SubtitleFormat::Ssa,
+            3 => crate::api::workflow::SubtitleFormat::Vtt,
+            _ => unreachable!("Invalid variant for SubtitleFormat: {}", inner),
+        };
+    }
+}
+
+impl SseDecode for crate::api::workflow::SubtitleOperation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut inner = <i32>::sse_decode(deserializer);
+        return match inner {
+            0 => crate::api::workflow::SubtitleOperation::Search,
+            1 => crate::api::workflow::SubtitleOperation::Preview,
+            2 => crate::api::workflow::SubtitleOperation::Acquisition,
+            _ => unreachable!("Invalid variant for SubtitleOperation: {}", inner),
         };
     }
 }
@@ -605,32 +558,47 @@ impl SseDecode for crate::api::simple::VideoSamplePlan {
     }
 }
 
-impl SseDecode for crate::api::xunlei::XunleiCandidate {
+impl SseDecode for crate::api::workflow::WorkflowSubtitleCandidate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_candidateId = <String>::sse_decode(deserializer);
-        let mut var_extension_ = <String>::sse_decode(deserializer);
+        let mut var_id = <String>::sse_decode(deserializer);
         let mut var_name = <String>::sse_decode(deserializer);
-        let mut var_durationMs = <Option<u64>>::sse_decode(deserializer);
         let mut var_languages = <Vec<String>>::sse_decode(deserializer);
-        let mut var_upstreamScore = <Option<f64>>::sse_decode(deserializer);
-        let mut var_fingerprintScore = <Option<f64>>::sse_decode(deserializer);
-        return crate::api::xunlei::XunleiCandidate {
-            candidate_id: var_candidateId,
-            extension: var_extension_,
+        let mut var_format = <crate::api::workflow::SubtitleFormat>::sse_decode(deserializer);
+        let mut var_matchScore = <i64>::sse_decode(deserializer);
+        let mut var_matchReasons =
+            <Vec<crate::api::workflow::MatchReason>>::sse_decode(deserializer);
+        return crate::api::workflow::WorkflowSubtitleCandidate {
+            id: var_id,
             name: var_name,
-            duration_ms: var_durationMs,
             languages: var_languages,
-            upstream_score: var_upstreamScore,
-            fingerprint_score: var_fingerprintScore,
+            format: var_format,
+            match_score: var_matchScore,
+            match_reasons: var_matchReasons,
         };
     }
 }
 
-impl SseDecode for i32 {
+impl SseDecode for crate::api::workflow::WorkflowSubtitlePreviewPage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        deserializer.cursor.read_i32::<NativeEndian>().unwrap()
+        let mut var_candidateId = <String>::sse_decode(deserializer);
+        let mut var_lines = <Vec<String>>::sse_decode(deserializer);
+        let mut var_page = <u32>::sse_decode(deserializer);
+        let mut var_totalPages = <u32>::sse_decode(deserializer);
+        return crate::api::workflow::WorkflowSubtitlePreviewPage {
+            candidate_id: var_candidateId,
+            lines: var_lines,
+            page: var_page,
+            total_pages: var_totalPages,
+        };
+    }
+}
+
+impl SseDecode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_u8().unwrap() != 0
     }
 }
 
@@ -643,9 +611,10 @@ fn pde_ffi_dispatcher_primary_impl(
 ) {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        3 => wire__crate__api__xunlei__download_xunlei_impl(port, ptr, rust_vec_len, data_len),
+        1 => wire__crate__api__workflow__acquire_subtitle_impl(port, ptr, rust_vec_len, data_len),
         4 => wire__crate__api__simple__init_app_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__xunlei__search_xunlei_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__workflow__preview_subtitle_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__workflow__search_subtitles_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -658,11 +627,9 @@ fn pde_ffi_dispatcher_sync_impl(
 ) -> flutter_rust_bridge::for_generated::WireSyncRust2DartSse {
     // Codec=Pde (Serialization + dispatch), see doc to use other codecs
     match func_id {
-        1 => wire__crate__api__simple__compute_cid_impl(ptr, rust_vec_len, data_len),
-        2 => wire__crate__api__simple__derive_search_name_impl(ptr, rust_vec_len, data_len),
+        2 => wire__crate__api__simple__compute_cid_impl(ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__simple__derive_search_name_impl(ptr, rust_vec_len, data_len),
         5 => wire__crate__api__simple__plan_video_sample_impl(ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__simple__rank_subtitle_candidates_impl(ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__simple__subtitle_preview_page_impl(ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -688,47 +655,48 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::ByteRange>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::simple::CandidateRankingContext {
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::MatchReason {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.search_name.into_into_dart().into_dart(),
-            self.video_cid.into_into_dart().into_dart(),
-            self.video_duration_millis.into_into_dart().into_dart(),
-            self.preferred_languages.into_into_dart().into_dart(),
-            self.preferred_formats.into_into_dart().into_dart(),
+            self.kind.into_into_dart().into_dart(),
+            self.value.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::simple::CandidateRankingContext
+    for crate::api::workflow::MatchReason
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::CandidateRankingContext>
-    for crate::api::simple::CandidateRankingContext
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::MatchReason>
+    for crate::api::workflow::MatchReason
 {
-    fn into_into_dart(self) -> crate::api::simple::CandidateRankingContext {
+    fn into_into_dart(self) -> crate::api::workflow::MatchReason {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::simple::RankedSubtitleCandidate {
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::MatchReasonKind {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
-        [
-            self.candidate.into_into_dart().into_dart(),
-            self.score.into_into_dart().into_dart(),
-        ]
-        .into_dart()
+        match self {
+            Self::ExactTitle => 0.into_dart(),
+            Self::TitleContains => 1.into_dart(),
+            Self::LanguageMatch => 2.into_dart(),
+            Self::ProviderScore => 3.into_dart(),
+            Self::FingerprintMatch => 4.into_dart(),
+            Self::SupportedFormat => 5.into_dart(),
+            _ => unreachable!(),
+        }
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::simple::RankedSubtitleCandidate
+    for crate::api::workflow::MatchReasonKind
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::RankedSubtitleCandidate>
-    for crate::api::simple::RankedSubtitleCandidate
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::MatchReasonKind>
+    for crate::api::workflow::MatchReasonKind
 {
-    fn into_into_dart(self) -> crate::api::simple::RankedSubtitleCandidate {
+    fn into_into_dart(self) -> crate::api::workflow::MatchReasonKind {
         self
     }
 }
@@ -754,54 +722,117 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::SampleChunk>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::simple::SubtitleCandidate {
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::SubtitleArtifact {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.id.into_into_dart().into_dart(),
-            self.name.into_into_dart().into_dart(),
-            self.cid.into_into_dart().into_dart(),
-            self.duration_millis.into_into_dart().into_dart(),
-            self.language.into_into_dart().into_dart(),
+            self.candidate_id.into_into_dart().into_dart(),
+            self.bytes.into_into_dart().into_dart(),
             self.format.into_into_dart().into_dart(),
-            self.upstream_score.into_into_dart().into_dart(),
-            self.fingerprint_match.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::simple::SubtitleCandidate
+    for crate::api::workflow::SubtitleArtifact
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::SubtitleCandidate>
-    for crate::api::simple::SubtitleCandidate
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::SubtitleArtifact>
+    for crate::api::workflow::SubtitleArtifact
 {
-    fn into_into_dart(self) -> crate::api::simple::SubtitleCandidate {
+    fn into_into_dart(self) -> crate::api::workflow::SubtitleArtifact {
         self
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::simple::SubtitlePreviewPage {
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::SubtitleFailure {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.lines.into_into_dart().into_dart(),
-            self.page.into_into_dart().into_dart(),
-            self.page_size.into_into_dart().into_dart(),
-            self.total_lines.into_into_dart().into_dart(),
-            self.total_pages.into_into_dart().into_dart(),
-            self.encoding.into_into_dart().into_dart(),
+            self.operation.into_into_dart().into_dart(),
+            self.kind.into_into_dart().into_dart(),
+            self.detail.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::simple::SubtitlePreviewPage
+    for crate::api::workflow::SubtitleFailure
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::SubtitlePreviewPage>
-    for crate::api::simple::SubtitlePreviewPage
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::SubtitleFailure>
+    for crate::api::workflow::SubtitleFailure
 {
-    fn into_into_dart(self) -> crate::api::simple::SubtitlePreviewPage {
+    fn into_into_dart(self) -> crate::api::workflow::SubtitleFailure {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::SubtitleFailureKind {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::InvalidSuggestedSearchName => 0.into_dart(),
+            Self::CandidateExpired => 1.into_dart(),
+            Self::ProviderUnavailable => 2.into_dart(),
+            Self::ArtifactTooLarge => 3.into_dart(),
+            Self::ArtifactInvalid => 4.into_dart(),
+            Self::PreviewPageOutOfRange => 5.into_dart(),
+            Self::Internal => 6.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::workflow::SubtitleFailureKind
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::SubtitleFailureKind>
+    for crate::api::workflow::SubtitleFailureKind
+{
+    fn into_into_dart(self) -> crate::api::workflow::SubtitleFailureKind {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::SubtitleFormat {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Srt => 0.into_dart(),
+            Self::Ass => 1.into_dart(),
+            Self::Ssa => 2.into_dart(),
+            Self::Vtt => 3.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::workflow::SubtitleFormat
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::SubtitleFormat>
+    for crate::api::workflow::SubtitleFormat
+{
+    fn into_into_dart(self) -> crate::api::workflow::SubtitleFormat {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::SubtitleOperation {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            Self::Search => 0.into_dart(),
+            Self::Preview => 1.into_dart(),
+            Self::Acquisition => 2.into_dart(),
+            _ => unreachable!(),
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::workflow::SubtitleOperation
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::SubtitleOperation>
+    for crate::api::workflow::SubtitleOperation
+{
+    fn into_into_dart(self) -> crate::api::workflow::SubtitleOperation {
         self
     }
 }
@@ -827,28 +858,50 @@ impl flutter_rust_bridge::IntoIntoDart<crate::api::simple::VideoSamplePlan>
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::api::xunlei::XunleiCandidate {
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::WorkflowSubtitleCandidate {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.candidate_id.into_into_dart().into_dart(),
-            self.extension.into_into_dart().into_dart(),
+            self.id.into_into_dart().into_dart(),
             self.name.into_into_dart().into_dart(),
-            self.duration_ms.into_into_dart().into_dart(),
             self.languages.into_into_dart().into_dart(),
-            self.upstream_score.into_into_dart().into_dart(),
-            self.fingerprint_score.into_into_dart().into_dart(),
+            self.format.into_into_dart().into_dart(),
+            self.match_score.into_into_dart().into_dart(),
+            self.match_reasons.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
-    for crate::api::xunlei::XunleiCandidate
+    for crate::api::workflow::WorkflowSubtitleCandidate
 {
 }
-impl flutter_rust_bridge::IntoIntoDart<crate::api::xunlei::XunleiCandidate>
-    for crate::api::xunlei::XunleiCandidate
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::WorkflowSubtitleCandidate>
+    for crate::api::workflow::WorkflowSubtitleCandidate
 {
-    fn into_into_dart(self) -> crate::api::xunlei::XunleiCandidate {
+    fn into_into_dart(self) -> crate::api::workflow::WorkflowSubtitleCandidate {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::api::workflow::WorkflowSubtitlePreviewPage {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.candidate_id.into_into_dart().into_dart(),
+            self.lines.into_into_dart().into_dart(),
+            self.page.into_into_dart().into_dart(),
+            self.total_pages.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::api::workflow::WorkflowSubtitlePreviewPage
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::api::workflow::WorkflowSubtitlePreviewPage>
+    for crate::api::workflow::WorkflowSubtitlePreviewPage
+{
+    fn into_into_dart(self) -> crate::api::workflow::WorkflowSubtitlePreviewPage {
         self
     }
 }
@@ -860,13 +913,6 @@ impl SseEncode for String {
     }
 }
 
-impl SseEncode for bool {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_u8(self as _).unwrap();
-    }
-}
-
 impl SseEncode for crate::api::simple::ByteRange {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -875,21 +921,10 @@ impl SseEncode for crate::api::simple::ByteRange {
     }
 }
 
-impl SseEncode for crate::api::simple::CandidateRankingContext {
+impl SseEncode for i32 {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.search_name, serializer);
-        <Option<String>>::sse_encode(self.video_cid, serializer);
-        <Option<u64>>::sse_encode(self.video_duration_millis, serializer);
-        <Vec<String>>::sse_encode(self.preferred_languages, serializer);
-        <Vec<String>>::sse_encode(self.preferred_formats, serializer);
-    }
-}
-
-impl SseEncode for f64 {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
     }
 }
 
@@ -920,22 +955,22 @@ impl SseEncode for Vec<crate::api::simple::ByteRange> {
     }
 }
 
+impl SseEncode for Vec<crate::api::workflow::MatchReason> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(self.len() as _, serializer);
+        for item in self {
+            <crate::api::workflow::MatchReason>::sse_encode(item, serializer);
+        }
+    }
+}
+
 impl SseEncode for Vec<u8> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
             <u8>::sse_encode(item, serializer);
-        }
-    }
-}
-
-impl SseEncode for Vec<crate::api::simple::RankedSubtitleCandidate> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <crate::api::simple::RankedSubtitleCandidate>::sse_encode(item, serializer);
         }
     }
 }
@@ -950,23 +985,41 @@ impl SseEncode for Vec<crate::api::simple::SampleChunk> {
     }
 }
 
-impl SseEncode for Vec<crate::api::simple::SubtitleCandidate> {
+impl SseEncode for Vec<crate::api::workflow::WorkflowSubtitleCandidate> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <i32>::sse_encode(self.len() as _, serializer);
         for item in self {
-            <crate::api::simple::SubtitleCandidate>::sse_encode(item, serializer);
+            <crate::api::workflow::WorkflowSubtitleCandidate>::sse_encode(item, serializer);
         }
     }
 }
 
-impl SseEncode for Vec<crate::api::xunlei::XunleiCandidate> {
+impl SseEncode for crate::api::workflow::MatchReason {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <i32>::sse_encode(self.len() as _, serializer);
-        for item in self {
-            <crate::api::xunlei::XunleiCandidate>::sse_encode(item, serializer);
-        }
+        <crate::api::workflow::MatchReasonKind>::sse_encode(self.kind, serializer);
+        <Option<String>>::sse_encode(self.value, serializer);
+    }
+}
+
+impl SseEncode for crate::api::workflow::MatchReasonKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::workflow::MatchReasonKind::ExactTitle => 0,
+                crate::api::workflow::MatchReasonKind::TitleContains => 1,
+                crate::api::workflow::MatchReasonKind::LanguageMatch => 2,
+                crate::api::workflow::MatchReasonKind::ProviderScore => 3,
+                crate::api::workflow::MatchReasonKind::FingerprintMatch => 4,
+                crate::api::workflow::MatchReasonKind::SupportedFormat => 5,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -980,34 +1033,6 @@ impl SseEncode for Option<String> {
     }
 }
 
-impl SseEncode for Option<f64> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.is_some(), serializer);
-        if let Some(value) = self {
-            <f64>::sse_encode(value, serializer);
-        }
-    }
-}
-
-impl SseEncode for Option<u64> {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <bool>::sse_encode(self.is_some(), serializer);
-        if let Some(value) = self {
-            <u64>::sse_encode(value, serializer);
-        }
-    }
-}
-
-impl SseEncode for crate::api::simple::RankedSubtitleCandidate {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <crate::api::simple::SubtitleCandidate>::sse_encode(self.candidate, serializer);
-        <i64>::sse_encode(self.score, serializer);
-    }
-}
-
 impl SseEncode for crate::api::simple::SampleChunk {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -1016,29 +1041,77 @@ impl SseEncode for crate::api::simple::SampleChunk {
     }
 }
 
-impl SseEncode for crate::api::simple::SubtitleCandidate {
+impl SseEncode for crate::api::workflow::SubtitleArtifact {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.id, serializer);
-        <String>::sse_encode(self.name, serializer);
-        <Option<String>>::sse_encode(self.cid, serializer);
-        <Option<u64>>::sse_encode(self.duration_millis, serializer);
-        <Option<String>>::sse_encode(self.language, serializer);
-        <String>::sse_encode(self.format, serializer);
-        <i64>::sse_encode(self.upstream_score, serializer);
-        <bool>::sse_encode(self.fingerprint_match, serializer);
+        <String>::sse_encode(self.candidate_id, serializer);
+        <Vec<u8>>::sse_encode(self.bytes, serializer);
+        <crate::api::workflow::SubtitleFormat>::sse_encode(self.format, serializer);
     }
 }
 
-impl SseEncode for crate::api::simple::SubtitlePreviewPage {
+impl SseEncode for crate::api::workflow::SubtitleFailure {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <Vec<String>>::sse_encode(self.lines, serializer);
-        <u32>::sse_encode(self.page, serializer);
-        <u32>::sse_encode(self.page_size, serializer);
-        <u32>::sse_encode(self.total_lines, serializer);
-        <u32>::sse_encode(self.total_pages, serializer);
-        <String>::sse_encode(self.encoding, serializer);
+        <crate::api::workflow::SubtitleOperation>::sse_encode(self.operation, serializer);
+        <crate::api::workflow::SubtitleFailureKind>::sse_encode(self.kind, serializer);
+        <Option<String>>::sse_encode(self.detail, serializer);
+    }
+}
+
+impl SseEncode for crate::api::workflow::SubtitleFailureKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::workflow::SubtitleFailureKind::InvalidSuggestedSearchName => 0,
+                crate::api::workflow::SubtitleFailureKind::CandidateExpired => 1,
+                crate::api::workflow::SubtitleFailureKind::ProviderUnavailable => 2,
+                crate::api::workflow::SubtitleFailureKind::ArtifactTooLarge => 3,
+                crate::api::workflow::SubtitleFailureKind::ArtifactInvalid => 4,
+                crate::api::workflow::SubtitleFailureKind::PreviewPageOutOfRange => 5,
+                crate::api::workflow::SubtitleFailureKind::Internal => 6,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::workflow::SubtitleFormat {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::workflow::SubtitleFormat::Srt => 0,
+                crate::api::workflow::SubtitleFormat::Ass => 1,
+                crate::api::workflow::SubtitleFormat::Ssa => 2,
+                crate::api::workflow::SubtitleFormat::Vtt => 3,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
+    }
+}
+
+impl SseEncode for crate::api::workflow::SubtitleOperation {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <i32>::sse_encode(
+            match self {
+                crate::api::workflow::SubtitleOperation::Search => 0,
+                crate::api::workflow::SubtitleOperation::Preview => 1,
+                crate::api::workflow::SubtitleOperation::Acquisition => 2,
+                _ => {
+                    unimplemented!("");
+                }
+            },
+            serializer,
+        );
     }
 }
 
@@ -1076,23 +1149,32 @@ impl SseEncode for crate::api::simple::VideoSamplePlan {
     }
 }
 
-impl SseEncode for crate::api::xunlei::XunleiCandidate {
+impl SseEncode for crate::api::workflow::WorkflowSubtitleCandidate {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <String>::sse_encode(self.candidate_id, serializer);
-        <String>::sse_encode(self.extension, serializer);
+        <String>::sse_encode(self.id, serializer);
         <String>::sse_encode(self.name, serializer);
-        <Option<u64>>::sse_encode(self.duration_ms, serializer);
         <Vec<String>>::sse_encode(self.languages, serializer);
-        <Option<f64>>::sse_encode(self.upstream_score, serializer);
-        <Option<f64>>::sse_encode(self.fingerprint_score, serializer);
+        <crate::api::workflow::SubtitleFormat>::sse_encode(self.format, serializer);
+        <i64>::sse_encode(self.match_score, serializer);
+        <Vec<crate::api::workflow::MatchReason>>::sse_encode(self.match_reasons, serializer);
     }
 }
 
-impl SseEncode for i32 {
+impl SseEncode for crate::api::workflow::WorkflowSubtitlePreviewPage {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        serializer.cursor.write_i32::<NativeEndian>(self).unwrap();
+        <String>::sse_encode(self.candidate_id, serializer);
+        <Vec<String>>::sse_encode(self.lines, serializer);
+        <u32>::sse_encode(self.page, serializer);
+        <u32>::sse_encode(self.total_pages, serializer);
+    }
+}
+
+impl SseEncode for bool {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_u8(self as _).unwrap();
     }
 }
 

@@ -4,12 +4,19 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[features]
+default = []
+# Enables the deterministic transport only for an explicitly requested
+# production-path smoke build. Normal builds always use the live Provider.
+offline-smoke = ["dep:futures-timer"]
 
 [dependencies]
 encoding_rs = "0.8.35"
 flutter_rust_bridge = "=2.13.0"
 futures-util = "0.3.34"
+futures-timer = { version = "3.0.3", optional = true }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 sha1 = "0.11.0"
@@ -20,6 +27,9 @@ reqwest = { version = "0.13.4", default-features = false, features = ["rustls", 
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 reqwest = { version = "0.13.4", default-features = false, features = ["stream"] }
+
+[dev-dependencies]
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

@@ -1,19 +1,61 @@
 class SubtitleCandidate {
-  const SubtitleCandidate({
+  SubtitleCandidate({
     required this.id,
     required this.name,
-    required this.language,
+    required this.languages,
     required this.format,
-    required this.score,
-    required this.reasons,
+    required this.matchScore,
+    required this.matchReasons,
   });
 
   final String id;
   final String name;
-  final String language;
+  final List<String> languages;
   final String format;
-  final int score;
-  final List<String> reasons;
+  final int matchScore;
+  final List<String> matchReasons;
+}
+
+class SubtitlePreviewPage {
+  const SubtitlePreviewPage({
+    required this.candidateId,
+    required this.lines,
+    required this.page,
+    required this.totalPages,
+  });
+
+  final String candidateId;
+  final List<String> lines;
+  final int page;
+  final int totalPages;
+}
+
+enum SubtitleSaveOutcome { saved, cancelled }
+
+enum SubtitleFailureKind {
+  invalidSuggestedSearchName,
+  candidateExpired,
+  providerUnavailable,
+  artifactTooLarge,
+  artifactInvalid,
+  previewPageOutOfRange,
+  saveFailed,
+  internal,
+}
+
+class SubtitleCoreException implements Exception {
+  const SubtitleCoreException({
+    required this.kind,
+    required this.operation,
+    this.detail,
+  });
+
+  final SubtitleFailureKind kind;
+  final String operation;
+  final String? detail;
+
+  @override
+  String toString() => 'SubtitleCoreException($operation, $kind)';
 }
 
 abstract interface class SubtitleCore {
@@ -21,9 +63,9 @@ abstract interface class SubtitleCore {
 
   Future<List<SubtitleCandidate>> search(String query);
 
-  Future<List<String>> preview(SubtitleCandidate candidate);
+  Future<SubtitlePreviewPage> preview(SubtitleCandidate candidate, int page);
 
-  Future<String> download(
+  Future<SubtitleSaveOutcome> download(
     SubtitleCandidate candidate, {
     required String videoFileName,
   });
@@ -68,34 +110,37 @@ class DemoSubtitleCore implements SubtitleCore {
       SubtitleCandidate(
         id: 'demo-1',
         name: '$query 简体中文.ass',
-        language: '简体中文',
+        languages: const ['简体中文'],
         format: 'ASS',
-        score: 96,
-        reasons: const ['文件名完全匹配', '时长接近', '高清片源'],
+        matchScore: 96,
+        matchReasons: const ['文件名完全匹配', '时长接近', '高清片源'],
       ),
       SubtitleCandidate(
         id: 'demo-2',
         name: '$query 繁體中文.srt',
-        language: '繁體中文',
+        languages: const ['繁體中文'],
         format: 'SRT',
-        score: 89,
-        reasons: const ['文件名匹配', '时长接近'],
+        matchScore: 89,
+        matchReasons: const ['文件名匹配', '时长接近'],
       ),
       SubtitleCandidate(
         id: 'demo-3',
         name: '$query 双语字幕.srt',
-        language: '中英双语',
+        languages: const ['中英双语'],
         format: 'SRT',
-        score: 82,
-        reasons: const ['关键词匹配', '用户高评分'],
+        matchScore: 82,
+        matchReasons: const ['关键词匹配', '用户高评分'],
       ),
     ];
   }
 
   @override
-  Future<List<String>> preview(SubtitleCandidate candidate) async {
+  Future<SubtitlePreviewPage> preview(
+    SubtitleCandidate candidate,
+    int page,
+  ) async {
     await Future<void>.delayed(const Duration(milliseconds: 180));
-    return List<String>.generate(74, (index) {
+    final lines = List<String>.generate(74, (index) {
       final line = index + 1;
       if (line % 3 == 1) return '${(line / 3).ceil()}';
       if (line % 3 == 2) {
@@ -104,15 +149,24 @@ class DemoSubtitleCore implements SubtitleCore {
       }
       return '这是「${candidate.name}」的演示字幕第 ${(line / 3).floor()} 条。';
     });
+    final totalPages = (lines.length / 30).ceil();
+    final start = (page - 1) * 30;
+    return SubtitlePreviewPage(
+      candidateId: candidate.id,
+      lines: start >= lines.length
+          ? const []
+          : lines.sublist(start, (start + 30).clamp(0, lines.length)),
+      page: page,
+      totalPages: totalPages,
+    );
   }
 
   @override
-  Future<String> download(
+  Future<SubtitleSaveOutcome> download(
     SubtitleCandidate candidate, {
     required String videoFileName,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
-    final baseName = deriveSubtitleBaseName(videoFileName);
-    return '已保存为 $baseName.${candidate.format.toLowerCase()}';
+    return SubtitleSaveOutcome.saved;
   }
 }

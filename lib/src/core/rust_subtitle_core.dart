@@ -1,32 +1,51 @@
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
+// ignore_for_file: library_private_types_in_public_api
+
 import 'package:ss_subtitle/src/core/subtitle_core.dart';
 import 'package:ss_subtitle/src/platform/subtitle_saver.dart';
 import 'package:ss_subtitle/src/rust/api/simple.dart' as rust_simple;
-import 'package:ss_subtitle/src/rust/api/xunlei.dart' as rust_xunlei;
+import 'package:ss_subtitle/src/rust/api/workflow.dart' as rust_workflow;
 
-typedef SubtitlePreviewPageLoader =
-    ({List<String> lines, int totalPages}) Function(int page);
+typedef _SearchOperation =
+    Future<List<rust_workflow.WorkflowSubtitleCandidate>> Function(
+      String query,
+    );
+typedef _PreviewOperation =
+    Future<rust_workflow.WorkflowSubtitlePreviewPage> Function(
+      String candidateId,
+      int page,
+    );
+typedef _AcquireOperation = Future<rust_workflow.SubtitleArtifact> Function(
+  String candidateId,
+);
 
-/// Loads every one-based Rust preview page exactly once, in order.
-List<String> collectSubtitlePreviewLines(SubtitlePreviewPageLoader loadPage) {
-  final first = loadPage(1);
-  final lines = <String>[...first.lines];
-  for (var page = 2; page <= first.totalPages; page++) {
-    lines.addAll(loadPage(page).lines);
-  }
-  return lines;
-}
-
-/// Production adapter for the Rust subtitle engine and the platform saver.
-///
-/// Generated bridge types stop here. Widgets and controllers only see the
-/// stable [SubtitleCore] interface.
+/// Production adapter for the three asynchronous Rust subtitle operations and
+/// the platform saver. Generated bridge types stop at this boundary.
 class RustSubtitleCore implements SubtitleCore {
-  RustSubtitleCore({PlatformSubtitleSaver? saver})
-    : _saver = saver ?? PlatformSubtitleSaver();
+  RustSubtitleCore({
+    PlatformSubtitleSaver? saver,
+    _SearchOperation? searchOperation,
+    _PreviewOperation? previewOperation,
+    _AcquireOperation? acquireOperation,
+  }) : _saver = saver ?? PlatformSubtitleSaver(),
+       _searchOperation =
+           searchOperation ??
+           ((query) =>
+               rust_workflow.searchSubtitles(suggestedSearchName: query)),
+       _previewOperation =
+           previewOperation ??
+           ((candidateId, page) => rust_workflow.previewSubtitle(
+             candidateId: candidateId,
+             page: page,
+           )),
+       _acquireOperation =
+           acquireOperation ??
+           ((candidateId) =>
+               rust_workflow.acquireSubtitle(candidateId: candidateId));
 
-  final Map<String, Uint8List> _downloadCache = {};
   final PlatformSubtitleSaver _saver;
+  final _SearchOperation _searchOperation;
+  final _PreviewOperation _previewOperation;
+  final _AcquireOperation _acquireOperation;
 
   @override
   String suggestedSearchName(String fileName) =>
@@ -34,116 +53,118 @@ class RustSubtitleCore implements SubtitleCore {
 
   @override
   Future<List<SubtitleCandidate>> search(String query) async {
-    final remote = await rust_xunlei.searchXunlei(query: query);
-    final byId = {for (final item in remote) item.candidateId: item};
-    final ranked = rust_simple.rankSubtitleCandidates(
-      candidates: remote
+    try {
+      final remote = await _searchOperation(query);
+      return remote
           .map(
-            (item) => rust_simple.SubtitleCandidate(
-              id: item.candidateId,
-              name: item.name,
-              cid: null,
-              durationMillis: item.durationMs,
-              language: item.languages.isEmpty
-                  ? null
-                  : item.languages.join(' / '),
-              format: item.extension_,
-              upstreamScore: PlatformInt64Util.from(
-                (item.upstreamScore ?? 0).round(),
-              ),
-              fingerprintMatch: (item.fingerprintScore ?? 0) > 0,
+            (candidate) => SubtitleCandidate(
+              id: candidate.id,
+              name: candidate.name,
+              languages: List<String>.unmodifiable(candidate.languages),
+              format: candidate.format.name.toUpperCase(),
+              matchScore: candidate.matchScore.toInt(),
+              matchReasons: candidate.matchReasons
+                  .map(_localizeMatchReason)
+                  .toList(growable: false),
             ),
           )
-          .toList(growable: false),
-      context: rust_simple.CandidateRankingContext(
-        searchName: query,
-        preferredLanguages: const ['简体中文', 'zh-CN', '中文'],
-        preferredFormats: const ['srt', 'ass', 'ssa', 'vtt'],
-      ),
-    );
-
-    return ranked
-        .map((item) {
-          final source = byId[item.candidate.id]!;
-          return SubtitleCandidate(
-            id: source.candidateId,
-            name: source.name,
-            language: source.languages.isEmpty
-                ? '语言未标注'
-                : source.languages.join(' / '),
-            format: source.extension_.toUpperCase(),
-            score: item.score.toInt(),
-            reasons: _matchReasons(source),
-          );
-        })
-        .toList(growable: false);
-  }
-
-  @override
-  Future<List<String>> preview(SubtitleCandidate candidate) async {
-    final bytes = await _bytesFor(candidate);
-    return collectSubtitlePreviewLines((page) {
-      final preview = rust_simple.subtitlePreviewPage(
-        bytes: bytes,
-        page: page,
-        format: candidate.format,
+          .toList(growable: false);
+    } on rust_workflow.SubtitleFailure catch (failure) {
+      throw _mapRustFailure(failure);
+    } catch (_) {
+      throw const SubtitleCoreException(
+        kind: SubtitleFailureKind.internal,
+        operation: 'search',
       );
-      return (lines: preview.lines, totalPages: preview.totalPages);
-    });
+    }
   }
 
   @override
-  Future<String> download(
+  Future<SubtitlePreviewPage> preview(
+    SubtitleCandidate candidate,
+    int page,
+  ) async {
+    try {
+      final remote = await _previewOperation(candidate.id, page);
+      return SubtitlePreviewPage(
+        candidateId: remote.candidateId,
+        lines: List<String>.unmodifiable(remote.lines),
+        page: remote.page,
+        totalPages: remote.totalPages,
+      );
+    } on rust_workflow.SubtitleFailure catch (failure) {
+      throw _mapRustFailure(failure);
+    } catch (_) {
+      throw const SubtitleCoreException(
+        kind: SubtitleFailureKind.internal,
+        operation: 'preview',
+      );
+    }
+  }
+
+  @override
+  Future<SubtitleSaveOutcome> download(
     SubtitleCandidate candidate, {
     required String videoFileName,
   }) async {
-    final bytes = await _bytesFor(candidate);
-    final extension = candidate.format.toLowerCase();
-    final baseName = deriveSubtitleBaseName(videoFileName);
-    final saved = await _saver.save(
-      baseName: baseName,
-      bytes: bytes,
-      extension: extension,
-      mimeType: _mimeType(extension),
+    try {
+      final artifact = await _acquireOperation(candidate.id);
+      final extension = artifact.format.name;
+      final saved = await _saver.save(
+        baseName: deriveSubtitleBaseName(videoFileName),
+        bytes: artifact.bytes,
+        extension: extension,
+        mimeType: _mimeType(extension),
+      );
+      return saved ? SubtitleSaveOutcome.saved : SubtitleSaveOutcome.cancelled;
+    } on rust_workflow.SubtitleFailure catch (failure) {
+      throw _mapRustFailure(failure);
+    } on SubtitleCoreException {
+      rethrow;
+    } catch (_) {
+      throw const SubtitleCoreException(
+        kind: SubtitleFailureKind.saveFailed,
+        operation: 'acquisition',
+      );
+    }
+  }
+
+  static String _localizeMatchReason(rust_workflow.MatchReason reason) {
+    return switch (reason.kind) {
+      rust_workflow.MatchReasonKind.exactTitle => '文件名完全匹配',
+      rust_workflow.MatchReasonKind.titleContains => '文件名匹配',
+      rust_workflow.MatchReasonKind.languageMatch =>
+        '语言：${reason.value ?? '未标注'}',
+      rust_workflow.MatchReasonKind.providerScore => 'Provider 评分',
+      rust_workflow.MatchReasonKind.fingerprintMatch => '指纹匹配',
+      rust_workflow.MatchReasonKind.supportedFormat => '支持的字幕格式',
+    };
+  }
+
+  static SubtitleCoreException _mapRustFailure(
+    rust_workflow.SubtitleFailure failure,
+  ) {
+    final kind = switch (failure.kind) {
+      rust_workflow.SubtitleFailureKind.invalidSuggestedSearchName =>
+        SubtitleFailureKind.invalidSuggestedSearchName,
+      rust_workflow.SubtitleFailureKind.candidateExpired =>
+        SubtitleFailureKind.candidateExpired,
+      rust_workflow.SubtitleFailureKind.providerUnavailable =>
+        SubtitleFailureKind.providerUnavailable,
+      rust_workflow.SubtitleFailureKind.artifactTooLarge =>
+        SubtitleFailureKind.artifactTooLarge,
+      rust_workflow.SubtitleFailureKind.artifactInvalid =>
+        SubtitleFailureKind.artifactInvalid,
+      rust_workflow.SubtitleFailureKind.previewPageOutOfRange =>
+        SubtitleFailureKind.previewPageOutOfRange,
+      rust_workflow.SubtitleFailureKind.internal =>
+        SubtitleFailureKind.internal,
+    };
+    return SubtitleCoreException(
+      kind: kind,
+      operation: failure.operation.name,
+      detail: failure.detail,
     );
-    if (!saved) return '已取消保存';
-    _downloadCache.remove(candidate.id);
-    return '字幕已保存为 $baseName.$extension';
-  }
-
-  Future<Uint8List> _bytesFor(SubtitleCandidate candidate) async {
-    final cached = _downloadCache[candidate.id];
-    if (cached != null) return cached;
-    final bytes = await rust_xunlei.downloadXunlei(candidateId: candidate.id);
-    _downloadCache[candidate.id] = bytes;
-    return bytes;
-  }
-
-  static List<String> _matchReasons(rust_xunlei.XunleiCandidate candidate) {
-    final reasons = <String>['Rust 本地名称与格式排序'];
-    if (candidate.languages.isNotEmpty) {
-      reasons.add('语言：${candidate.languages.join(' / ')}');
-    }
-    if ((candidate.upstreamScore ?? 0) > 0) {
-      reasons.add('迅雷评分：${candidate.upstreamScore!.toStringAsFixed(0)}');
-    }
-    if ((candidate.fingerprintScore ?? 0) > 0) {
-      reasons.add('指纹评分：${candidate.fingerprintScore!.toStringAsFixed(0)}');
-    }
-    if (candidate.durationMs != null) {
-      reasons.add('字幕时长：${_formatDuration(candidate.durationMs!)}');
-    }
-    return reasons;
-  }
-
-  static String _formatDuration(BigInt milliseconds) {
-    final seconds = milliseconds ~/ BigInt.from(1000);
-    final hours = seconds ~/ BigInt.from(3600);
-    final minutes = (seconds % BigInt.from(3600)) ~/ BigInt.from(60);
-    final remainder = seconds % BigInt.from(60);
-    return '${hours.toString().padLeft(2, '0')}:'
-        '${minutes.toString().padLeft(2, '0')}:'
-        '${remainder.toString().padLeft(2, '0')}';
   }
 
   static String _mimeType(String extension) => switch (extension) {

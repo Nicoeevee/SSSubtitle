@@ -1,0 +1,7 @@
+# The profile build is reserved for the deterministic generated-FRB smoke.
+# Release and debug builds keep the normal live Provider transport.
+cargo:
+  profile:
+    extra_flags:
+      - --features
+      - offline-smoke

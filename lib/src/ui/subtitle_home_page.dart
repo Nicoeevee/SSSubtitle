@@ -365,7 +365,7 @@ class _CandidatePanel extends StatelessWidget {
             return Semantics(
               selected: selected,
               button: true,
-              label: '${item.name}，匹配分 ${item.score}',
+              label: '${item.name}，匹配分 ${item.matchScore}',
               child: Card(
                 color: selected
                     ? Theme.of(context).colorScheme.secondaryContainer
@@ -390,13 +390,13 @@ class _CandidatePanel extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: AppSpacing.xs),
-                            Chip(label: Text('${item.score} 分')),
+                            Chip(label: Text('${item.matchScore} 分')),
                           ],
                         ),
-                        Text('${item.language} · ${item.format}'),
+                        Text('${item.languages.join(' / ')} · ${item.format}'),
                         const SizedBox(height: AppSpacing.xxs),
                         Text(
-                          item.reasons.join(' · '),
+                          item.matchReasons.join(' · '),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],

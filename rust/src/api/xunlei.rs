@@ -1,8 +1,7 @@
+use crate::api::workflow::SubtitleFormat;
 use futures_util::StreamExt;
 use serde::Deserialize;
-use sha1::{Digest, Sha1};
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::{Mutex, OnceLock};
+use std::collections::HashSet;
 use std::time::Duration;
 use url::Url;
 
@@ -17,91 +16,24 @@ const SEARCH_RESPONSE_LIMIT: usize = 2 * 1024 * 1024;
 const SUBTITLE_DOWNLOAD_LIMIT: usize = 20 * 1024 * 1024;
 #[cfg(not(target_family = "wasm"))]
 const MAX_REDIRECTS: usize = 5;
-const MAX_REGISTRY_ENTRIES: usize = 4_096;
-
-/// A Xunlei subtitle candidate safe to send across flutter_rust_bridge.
-///
-/// The provider download URL is deliberately absent. Callers can download a
-/// candidate only through its opaque `candidate_id`.
 #[derive(Debug, Clone, PartialEq)]
-pub struct XunleiCandidate {
-    pub candidate_id: String,
-    pub extension: String,
-    pub name: String,
-    pub duration_ms: Option<u64>,
-    pub languages: Vec<String>,
-    pub upstream_score: Option<f64>,
-    pub fingerprint_score: Option<f64>,
-}
-
-#[derive(Debug, Clone)]
-struct RegisteredCandidate {
-    url: Url,
-    extension: SubtitleExtension,
-}
-
-#[derive(Default)]
 #[flutter_rust_bridge::frb(ignore)]
-struct CandidateRegistry {
-    entries: HashMap<String, RegisteredCandidate>,
-    insertion_order: VecDeque<String>,
-}
-
-impl CandidateRegistry {
-    fn insert(&mut self, id: String, candidate: RegisteredCandidate) {
-        if !self.entries.contains_key(&id) {
-            self.insertion_order.push_back(id.clone());
-        }
-        self.entries.insert(id, candidate);
-
-        while self.entries.len() > MAX_REGISTRY_ENTRIES {
-            if let Some(expired_id) = self.insertion_order.pop_front() {
-                self.entries.remove(&expired_id);
-            } else {
-                break;
-            }
-        }
-    }
-}
-
-static CANDIDATE_REGISTRY: OnceLock<Mutex<CandidateRegistry>> = OnceLock::new();
-
-fn candidate_registry() -> &'static Mutex<CandidateRegistry> {
-    CANDIDATE_REGISTRY.get_or_init(|| Mutex::new(CandidateRegistry::default()))
+pub(crate) struct XunleiCandidate {
+    pub(crate) locator: String,
+    pub(crate) extension: String,
+    pub(crate) name: String,
+    pub(crate) duration_ms: Option<u64>,
+    pub(crate) languages: Vec<String>,
+    pub(crate) upstream_score: Option<f64>,
+    pub(crate) fingerprint_score: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SubtitleExtension {
-    Srt,
-    Ass,
-    Ssa,
-    Vtt,
-}
-
-impl SubtitleExtension {
-    fn parse(value: &str) -> Result<Self, String> {
-        match value
-            .trim()
-            .trim_start_matches('.')
-            .to_ascii_lowercase()
-            .as_str()
-        {
-            "srt" => Ok(Self::Srt),
-            "ass" => Ok(Self::Ass),
-            "ssa" => Ok(Self::Ssa),
-            "vtt" => Ok(Self::Vtt),
-            _ => Err("Xunlei returned an unsupported subtitle format".to_owned()),
-        }
-    }
-
-    fn as_str(self) -> &'static str {
-        match self {
-            Self::Srt => "srt",
-            Self::Ass => "ass",
-            Self::Ssa => "ssa",
-            Self::Vtt => "vtt",
-        }
-    }
+pub(crate) enum XunleiFailure {
+    Network,
+    Http(u16),
+    Protocol,
+    ArtifactTooLarge,
 }
 
 #[derive(Debug, Deserialize)]
@@ -133,23 +65,20 @@ struct XunleiCandidateWire {
 }
 
 /// Search Xunlei by an editable Suggested Search Name.
-///
-/// Only `query` is sent to Xunlei. Candidate URLs remain in a bounded native
-/// registry and are represented across FRB by opaque SHA-1 identifiers.
-pub async fn search_xunlei(query: String) -> Result<Vec<XunleiCandidate>, String> {
+#[flutter_rust_bridge::frb(ignore)]
+pub(crate) async fn search_xunlei(query: String) -> Result<Vec<XunleiCandidate>, XunleiFailure> {
     let query = query.trim();
     if query.is_empty() {
-        return Err("Search name cannot be empty".to_owned());
+        return Err(XunleiFailure::Protocol);
     }
     if query.chars().count() > 512 {
-        return Err("Search name is too long".to_owned());
+        return Err(XunleiFailure::Protocol);
     }
 
-    let mut endpoint = Url::parse(SEARCH_ENDPOINT)
-        .map_err(|_| "The Xunlei search endpoint is invalid".to_owned())?;
+    let mut endpoint = Url::parse(SEARCH_ENDPOINT).map_err(|_| XunleiFailure::Protocol)?;
     endpoint.query_pairs_mut().append_pair("name", query);
 
-    let client = build_client(SEARCH_TIMEOUT)?;
+    let client = build_client(SEARCH_TIMEOUT).map_err(|_| XunleiFailure::Network)?;
     let request = client
         .get(endpoint)
         .header(reqwest::header::ACCEPT, "application/json");
@@ -158,92 +87,65 @@ pub async fn search_xunlei(query: String) -> Result<Vec<XunleiCandidate>, String
         .timeout(SEARCH_TIMEOUT)
         .header(reqwest::header::USER_AGENT, USER_AGENT);
 
-    let response = request
-        .send()
-        .await
-        .map_err(|_| "Xunlei search request failed".to_owned())?;
-    validate_response_url(response.url())?;
+    let response = request.send().await.map_err(|_| XunleiFailure::Network)?;
+    validate_response_url(response.url()).map_err(|_| XunleiFailure::Protocol)?;
     if !response.status().is_success() {
-        return Err(format!(
-            "Xunlei search returned HTTP {}",
-            response.status().as_u16()
-        ));
+        return Err(XunleiFailure::Http(response.status().as_u16()));
     }
 
-    let body = read_limited(response, SEARCH_RESPONSE_LIMIT, "Xunlei search response").await?;
+    let body = read_limited(response, SEARCH_RESPONSE_LIMIT, XunleiFailure::Protocol).await?;
     parse_search_payload(&body)
 }
 
 /// Download a previously searched Xunlei Subtitle Candidate.
-///
-/// The opaque ID must still exist in the process-local bounded registry. The
-/// implementation streams the response and aborts before it exceeds 20 MiB.
-pub async fn download_xunlei(candidate_id: String) -> Result<Vec<u8>, String> {
-    let registered = {
-        let registry = candidate_registry()
-            .lock()
-            .map_err(|_| "The Xunlei candidate registry is unavailable".to_owned())?;
-        registry
-            .entries
-            .get(&candidate_id)
-            .cloned()
-            .ok_or_else(|| "The Xunlei candidate is unknown or expired".to_owned())?
-    };
-
-    validate_download_url(&registered.url)?;
-    let client = build_client(DOWNLOAD_TIMEOUT)?;
-    let request = client.get(registered.url);
+#[flutter_rust_bridge::frb(ignore)]
+pub(crate) async fn download_xunlei(locator: String) -> Result<Vec<u8>, XunleiFailure> {
+    let url = Url::parse(&locator).map_err(|_| XunleiFailure::Protocol)?;
+    validate_download_url(&url).map_err(|_| XunleiFailure::Protocol)?;
+    let client = build_client(DOWNLOAD_TIMEOUT).map_err(|_| XunleiFailure::Network)?;
+    let request = client.get(url);
     #[cfg(not(target_family = "wasm"))]
     let request = request
         .timeout(DOWNLOAD_TIMEOUT)
         .header(reqwest::header::USER_AGENT, USER_AGENT)
         .header(reqwest::header::REFERER, XUNLEI_REFERER);
 
-    let response = request
-        .send()
-        .await
-        .map_err(|_| "Xunlei subtitle download failed".to_owned())?;
-    validate_download_url(response.url())?;
+    let response = request.send().await.map_err(|_| XunleiFailure::Network)?;
+    validate_download_url(response.url()).map_err(|_| XunleiFailure::Protocol)?;
     if !response.status().is_success() {
-        return Err(format!(
-            "Xunlei subtitle download returned HTTP {}",
-            response.status().as_u16()
-        ));
+        return Err(XunleiFailure::Http(response.status().as_u16()));
     }
 
-    let bytes = read_limited(response, SUBTITLE_DOWNLOAD_LIMIT, "Subtitle download").await?;
-    validate_subtitle_content(&bytes, registered.extension)?;
-    Ok(bytes)
+    read_limited(
+        response,
+        SUBTITLE_DOWNLOAD_LIMIT,
+        XunleiFailure::ArtifactTooLarge,
+    )
+    .await
 }
 
-fn parse_search_payload(body: &[u8]) -> Result<Vec<XunleiCandidate>, String> {
+fn parse_search_payload(body: &[u8]) -> Result<Vec<XunleiCandidate>, XunleiFailure> {
     let response: XunleiSearchResponse =
-        serde_json::from_slice(body).map_err(|_| "Xunlei returned invalid JSON".to_owned())?;
+        serde_json::from_slice(body).map_err(|_| XunleiFailure::Protocol)?;
 
     if response.code.is_some_and(|code| code != 0) {
-        return Err(format!(
-            "Xunlei returned business error code {}",
-            response.code.unwrap_or_default()
-        ));
+        return Err(XunleiFailure::Protocol);
     }
     if let Some(result) = response.result.as_deref() {
         let result = result.trim();
         if !result.is_empty() && !result.eq_ignore_ascii_case("ok") {
-            return Err("Xunlei returned an unsuccessful result".to_owned());
+            return Err(XunleiFailure::Protocol);
         }
     }
 
     let mut candidates = Vec::new();
-    let mut seen_ids = HashSet::new();
-    let mut registry = candidate_registry()
-        .lock()
-        .map_err(|_| "The Xunlei candidate registry is unavailable".to_owned())?;
+    let mut seen_locators = HashSet::new();
 
     for wire in response.data.unwrap_or_default() {
         let Some(extension_text) = wire.ext.as_deref() else {
             continue;
         };
-        let Ok(extension) = SubtitleExtension::parse(extension_text) else {
+        let Some(extension) = SubtitleFormat::parse(extension_text) else {
             continue;
         };
         let Some(url_text) = wire.url.as_deref() else {
@@ -256,13 +158,12 @@ fn parse_search_payload(body: &[u8]) -> Result<Vec<XunleiCandidate>, String> {
             continue;
         }
 
-        let candidate_id = stable_candidate_id(url.as_str());
-        if !seen_ids.insert(candidate_id.clone()) {
+        let locator = url.to_string();
+        if !seen_locators.insert(locator.clone()) {
             continue;
         }
-        registry.insert(candidate_id.clone(), RegisteredCandidate { url, extension });
         candidates.push(XunleiCandidate {
-            candidate_id,
+            locator,
             extension: extension.as_str().to_owned(),
             name: wire.name,
             duration_ms: wire.duration.filter(|duration| *duration > 0),
@@ -273,17 +174,6 @@ fn parse_search_payload(body: &[u8]) -> Result<Vec<XunleiCandidate>, String> {
     }
 
     Ok(candidates)
-}
-
-fn stable_candidate_id(url: &str) -> String {
-    let digest = Sha1::digest(url.as_bytes());
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut id = String::with_capacity(digest.len() * 2);
-    for byte in digest {
-        id.push(HEX[(byte >> 4) as usize] as char);
-        id.push(HEX[(byte & 0x0f) as usize] as char);
-    }
-    id
 }
 
 fn build_client(timeout: Duration) -> Result<reqwest::Client, String> {
@@ -347,28 +237,29 @@ fn allowed_host(host: &str) -> bool {
 async fn read_limited(
     response: reqwest::Response,
     limit: usize,
-    description: &str,
-) -> Result<Vec<u8>, String> {
+    over_limit: XunleiFailure,
+) -> Result<Vec<u8>, XunleiFailure> {
     if response
         .content_length()
         .is_some_and(|length| length > limit as u64)
     {
-        return Err(format!("{description} exceeds the size limit"));
+        return Err(over_limit);
     }
 
     let mut bytes = Vec::new();
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|_| format!("Could not read {description}"))?;
+        let chunk = chunk.map_err(|_| XunleiFailure::Network)?;
         if bytes.len().saturating_add(chunk.len()) > limit {
-            return Err(format!("{description} exceeds the size limit"));
+            return Err(over_limit);
         }
         bytes.extend_from_slice(&chunk);
     }
     Ok(bytes)
 }
 
-fn validate_subtitle_content(bytes: &[u8], extension: SubtitleExtension) -> Result<(), String> {
+#[cfg(test)]
+fn validate_subtitle_content(bytes: &[u8], extension: SubtitleFormat) -> Result<(), String> {
     if bytes.len() < 8 {
         return Err("Subtitle content is empty or too short".to_owned());
     }
@@ -385,11 +276,11 @@ fn validate_subtitle_content(bytes: &[u8], extension: SubtitleExtension) -> Resu
     }
 
     let valid = match extension {
-        SubtitleExtension::Srt => sample.contains("-->"),
-        SubtitleExtension::Ass | SubtitleExtension::Ssa => {
+        SubtitleFormat::Srt => sample.contains("-->"),
+        SubtitleFormat::Ass | SubtitleFormat::Ssa => {
             lower.contains("[script info]") || lower.contains("dialogue:")
         }
-        SubtitleExtension::Vtt => lower.starts_with("webvtt") || sample.contains("-->"),
+        SubtitleFormat::Vtt => lower.starts_with("webvtt") || sample.contains("-->"),
     };
     if !valid {
         return Err(format!(
@@ -400,6 +291,7 @@ fn validate_subtitle_content(bytes: &[u8], extension: SubtitleExtension) -> Resu
     Ok(())
 }
 
+#[cfg(test)]
 fn subtitle_sample_text(bytes: &[u8]) -> String {
     const SAMPLE_LIMIT: usize = 64 * 1024;
     let sample = &bytes[..bytes.len().min(SAMPLE_LIMIT)];
@@ -461,16 +353,16 @@ mod tests {
         assert_eq!(candidates[0].upstream_score, Some(12.5));
         assert_eq!(candidates[0].fingerprint_score, Some(7.0));
         assert_eq!(
-            candidates[0].candidate_id,
-            stable_candidate_id("https://subtitle.v.geilijiasu.com/fixtures/sample-subtitle.srt")
+            candidates[0].locator,
+            "https://subtitle.v.geilijiasu.com/fixtures/sample-subtitle.srt"
         );
     }
 
     #[test]
-    fn business_error_is_not_exposed_as_an_empty_search() {
+    fn business_error_is_bounded_as_a_protocol_failure() {
         let error = parse_search_payload(br#"{"code": 17, "result": "failed"}"#).unwrap_err();
 
-        assert_eq!(error, "Xunlei returned business error code 17");
+        assert_eq!(error, XunleiFailure::Protocol);
     }
 
     #[test]
@@ -499,22 +391,21 @@ mod tests {
     fn subtitle_validation_accepts_supported_formats_and_rejects_error_documents() {
         validate_subtitle_content(
             b"1\r\n00:00:01,000 --> 00:00:02,000\r\nHello\r\n",
-            SubtitleExtension::Srt,
+            SubtitleFormat::Srt,
         )
         .unwrap();
         validate_subtitle_content(
             b"WEBVTT\n\n00:01.000 --> 00:02.000\nHello\n",
-            SubtitleExtension::Vtt,
+            SubtitleFormat::Vtt,
         )
         .unwrap();
         assert!(validate_subtitle_content(
             b"<!doctype html><html>upstream error</html>",
-            SubtitleExtension::Srt,
+            SubtitleFormat::Srt,
         )
         .is_err());
         assert!(
-            validate_subtitle_content(br#"{"error":"rate limited"}"#, SubtitleExtension::Ass)
-                .is_err()
+            validate_subtitle_content(br#"{"error":"rate limited"}"#, SubtitleFormat::Ass).is_err()
         );
     }
 
@@ -525,6 +416,6 @@ mod tests {
             bytes.extend_from_slice(&unit.to_le_bytes());
         }
 
-        validate_subtitle_content(&bytes, SubtitleExtension::Srt).unwrap();
+        validate_subtitle_content(&bytes, SubtitleFormat::Srt).unwrap();
     }
 }

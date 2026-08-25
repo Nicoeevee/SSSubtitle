@@ -1,5 +1,4 @@
 pub const SAMPLE_SIZE: u64 = 0x5000;
-pub const PREVIEW_PAGE_SIZE: u32 = 30;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ByteRange {
@@ -17,43 +16,6 @@ pub struct VideoSamplePlan {
 pub struct SampleChunk {
     pub offset: u64,
     pub bytes: Vec<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SubtitlePreviewPage {
-    pub lines: Vec<String>,
-    pub page: u32,
-    pub page_size: u32,
-    pub total_lines: u32,
-    pub total_pages: u32,
-    pub encoding: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SubtitleCandidate {
-    pub id: String,
-    pub name: String,
-    pub cid: Option<String>,
-    pub duration_millis: Option<u64>,
-    pub language: Option<String>,
-    pub format: String,
-    pub upstream_score: i64,
-    pub fingerprint_match: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CandidateRankingContext {
-    pub search_name: String,
-    pub video_cid: Option<String>,
-    pub video_duration_millis: Option<u64>,
-    pub preferred_languages: Vec<String>,
-    pub preferred_formats: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RankedSubtitleCandidate {
-    pub candidate: SubtitleCandidate,
-    pub score: i64,
 }
 
 #[flutter_rust_bridge::frb(sync)]
@@ -143,59 +105,7 @@ pub fn compute_cid(file_size: u64, mut chunks: Vec<SampleChunk>) -> Result<Strin
     Ok(cid)
 }
 
-#[flutter_rust_bridge::frb(sync)]
-pub fn subtitle_preview_page(
-    bytes: Vec<u8>,
-    page: u32,
-    format: String,
-) -> Result<SubtitlePreviewPage, String> {
-    const MAX_SUBTITLE_BYTES: usize = 20 * 1024 * 1024;
-    if !(8..=MAX_SUBTITLE_BYTES).contains(&bytes.len()) {
-        return Err("subtitle must be between 8 bytes and 20 MiB".into());
-    }
-    if page == 0 {
-        return Err("page numbers start at 1".into());
-    }
-    let (text, encoding) = decode_subtitle(&bytes)?;
-    validate_subtitle_text(&text, &format)?;
-    let lines: Vec<String> = text
-        .lines()
-        .map(|line| line.trim_end_matches('\r').to_owned())
-        .collect();
-    let total_lines = u32::try_from(lines.len()).map_err(|_| "subtitle has too many lines")?;
-    let total_pages = total_lines.max(1).div_ceil(PREVIEW_PAGE_SIZE);
-    if page > total_pages {
-        return Err(format!("page {page} exceeds total pages {total_pages}"));
-    }
-    let start = ((page - 1) * PREVIEW_PAGE_SIZE) as usize;
-    let end = (start + PREVIEW_PAGE_SIZE as usize).min(lines.len());
-    Ok(SubtitlePreviewPage {
-        lines: lines[start..end].to_vec(),
-        page,
-        page_size: PREVIEW_PAGE_SIZE,
-        total_lines,
-        total_pages,
-        encoding,
-    })
-}
-
-#[flutter_rust_bridge::frb(sync)]
-pub fn rank_subtitle_candidates(
-    candidates: Vec<SubtitleCandidate>,
-    context: CandidateRankingContext,
-) -> Vec<RankedSubtitleCandidate> {
-    let mut ranked: Vec<_> = candidates
-        .into_iter()
-        .map(|candidate| {
-            let score = candidate_score(&candidate, &context);
-            RankedSubtitleCandidate { candidate, score }
-        })
-        .collect();
-    ranked.sort_by(|left, right| right.score.cmp(&left.score));
-    ranked
-}
-
-fn decode_subtitle(bytes: &[u8]) -> Result<(String, String), String> {
+pub(crate) fn decode_subtitle(bytes: &[u8]) -> Result<(String, String), String> {
     if let Some(body) = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]) {
         return String::from_utf8(body.to_vec())
             .map(|s| (s, "UTF-8 BOM".into()))
@@ -236,7 +146,7 @@ fn decode_utf16(bytes: &[u8], little_endian: bool) -> Result<String, String> {
         .map_err(|_| "invalid UTF-16 subtitle".into())
 }
 
-fn validate_subtitle_text(text: &str, format: &str) -> Result<(), String> {
+pub(crate) fn validate_subtitle_text(text: &str, format: &str) -> Result<(), String> {
     let trimmed = text.trim_start().to_ascii_lowercase();
     if trimmed.starts_with("<!doctype html")
         || trimmed.starts_with("<html")
@@ -260,7 +170,7 @@ fn validate_subtitle_text(text: &str, format: &str) -> Result<(), String> {
     }
 }
 
-fn normalized_title(value: &str) -> String {
+pub(crate) fn normalized_title(value: &str) -> String {
     let value = value.rsplit_once('.').map_or(value, |(stem, _)| stem);
     value
         .to_lowercase()
@@ -276,102 +186,6 @@ fn normalized_title(value: &str) -> String {
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ")
-}
-
-fn candidate_score(candidate: &SubtitleCandidate, context: &CandidateRankingContext) -> i64 {
-    let mut score = 0;
-    if candidate
-        .cid
-        .as_deref()
-        .zip(context.video_cid.as_deref())
-        .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
-    {
-        score += 10_000;
-    }
-    let title = normalized_title(&candidate.name);
-    let query = normalized_title(&context.search_name);
-    if !query.is_empty() && title == query {
-        score += 900;
-    } else if !query.is_empty() && (title.contains(&query) || query.contains(&title)) {
-        score += 650;
-    } else {
-        let tokens: Vec<_> = query
-            .split_whitespace()
-            .filter(|token| token.chars().count() >= 2)
-            .collect();
-        if !tokens.is_empty() {
-            score += 500
-                * tokens
-                    .iter()
-                    .filter(|token| title.contains(**token))
-                    .count() as i64
-                / tokens.len() as i64;
-        }
-    }
-    if let (Some(actual), Some(expected)) =
-        (candidate.duration_millis, context.video_duration_millis)
-    {
-        if expected > 0 {
-            let difference = actual.abs_diff(expected) as f64 / expected as f64;
-            score += if difference <= 0.01 {
-                1_200
-            } else if difference <= 0.03 {
-                800
-            } else if difference <= 0.05 {
-                500
-            } else if difference <= 0.10 {
-                150
-            } else if difference > 0.30 {
-                -300
-            } else {
-                0
-            };
-        }
-    }
-    let language = candidate
-        .language
-        .as_deref()
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    score += if language.is_empty() {
-        100
-    } else if matches!(
-        language.as_str(),
-        "zh-cn" | "zh-hans" | "chs" | "简体" | "简中"
-    ) {
-        500
-    } else if matches!(language.as_str(), "zh" | "chi" | "zho" | "chinese" | "中文") {
-        350
-    } else if matches!(
-        language.as_str(),
-        "zh-tw" | "zh-hant" | "cht" | "繁体" | "繁中"
-    ) {
-        220
-    } else {
-        context
-            .preferred_languages
-            .iter()
-            .position(|preferred| preferred.eq_ignore_ascii_case(&language))
-            .map_or(0, |index| (180 - index as i64 * 20).max(20))
-    };
-    score += match candidate
-        .format
-        .trim()
-        .trim_start_matches('.')
-        .to_ascii_lowercase()
-        .as_str()
-    {
-        "srt" => 80,
-        "ass" => 60,
-        "ssa" => 50,
-        "vtt" => 40,
-        _ => 0,
-    };
-    score += candidate.upstream_score.clamp(0, 100);
-    if candidate.fingerprint_match {
-        score += 100;
-    }
-    score
 }
 
 #[flutter_rust_bridge::frb(init)]
@@ -463,102 +277,5 @@ mod tests {
             ]
         )
         .is_err());
-    }
-
-    #[test]
-    fn decodes_and_paginates_utf8_utf16_and_gbk_subtitles() {
-        let text = (1..=31)
-            .map(|n| format!("{n}\n00:00:01,000 --> 00:00:02,000\nline {n}"))
-            .collect::<Vec<_>>()
-            .join("\n");
-        let page = subtitle_preview_page(text.as_bytes().to_vec(), 4, "srt".into()).unwrap();
-        assert_eq!(
-            page.lines,
-            vec!["31", "00:00:01,000 --> 00:00:02,000", "line 31"]
-        );
-        assert_eq!(
-            (page.page_size, page.total_lines, page.total_pages),
-            (30, 93, 4)
-        );
-        assert_eq!(page.encoding, "UTF-8");
-
-        let utf16le = [
-            vec![0xFF, 0xFE],
-            "[Script Info]\n字幕"
-                .encode_utf16()
-                .flat_map(u16::to_le_bytes)
-                .collect(),
-        ]
-        .concat();
-        assert_eq!(
-            subtitle_preview_page(utf16le, 1, "ass".into())
-                .unwrap()
-                .lines,
-            vec!["[Script Info]", "字幕"]
-        );
-
-        let utf16be = [
-            vec![0xFE, 0xFF],
-            "WEBVTT\n字幕"
-                .encode_utf16()
-                .flat_map(u16::to_be_bytes)
-                .collect(),
-        ]
-        .concat();
-        assert_eq!(
-            subtitle_preview_page(utf16be, 1, "vtt".into())
-                .unwrap()
-                .encoding,
-            "UTF-16BE"
-        );
-
-        let (gbk, _, _) = encoding_rs::GBK.encode("1\n00:00:01 --> 00:00:02\n中文字幕");
-        let preview = subtitle_preview_page(gbk.into_owned(), 1, "srt".into()).unwrap();
-        assert_eq!(preview.lines.last().unwrap(), "中文字幕");
-        assert_eq!(preview.encoding, "GBK");
-        assert!(subtitle_preview_page(b"one two three".to_vec(), 0, "txt".into()).is_err());
-        assert!(subtitle_preview_page(b"one two three".to_vec(), 2, "txt".into()).is_err());
-        assert!(subtitle_preview_page(b"<html>error</html>".to_vec(), 1, "txt".into()).is_err());
-        assert!(subtitle_preview_page(br#"{"error":"denied"}"#.to_vec(), 1, "txt".into()).is_err());
-    }
-
-    #[test]
-    fn ranks_candidates_by_all_signals_and_keeps_ties_stable() {
-        let candidate = |id: &str, cid: Option<&str>, duration, language: &str, format: &str| {
-            SubtitleCandidate {
-                id: id.into(),
-                name: "documentary episode Chinese".into(),
-                cid: cid.map(Into::into),
-                duration_millis: duration,
-                language: Some(language.into()),
-                format: format.into(),
-                upstream_score: 0,
-                fingerprint_match: false,
-            }
-        };
-        let ranked = rank_subtitle_candidates(
-            vec![
-                candidate("weak", None, None, "en", "ass"),
-                candidate("best", Some("matching-cid"), Some(100_500), "zh-CN", "srt"),
-                candidate("tie-a", None, Some(110_000), "zh-CN", "srt"),
-                candidate("tie-b", None, Some(110_000), "zh-CN", "srt"),
-            ],
-            CandidateRankingContext {
-                search_name: "documentary episode".into(),
-                video_cid: Some("MATCHING-CID".into()),
-                video_duration_millis: Some(100_000),
-                preferred_languages: vec!["zh-CN".into()],
-                preferred_formats: vec!["srt".into()],
-            },
-        );
-        assert_eq!(
-            ranked
-                .iter()
-                .map(|r| r.candidate.id.as_str())
-                .collect::<Vec<_>>(),
-            vec!["best", "tie-a", "tie-b", "weak"]
-        );
-        assert_eq!(ranked[0].score, 12_430);
-        assert!(ranked[0].score > ranked[1].score);
     }
 }

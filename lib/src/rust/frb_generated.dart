@@ -4,7 +4,7 @@
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
 import 'api/simple.dart';
-import 'api/xunlei.dart';
+import 'api/workflow.dart';
 
 import 'dart:async';
 import 'dart:convert';
@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.13.0';
 
   @override
-  int get rustContentHash => -321703386;
+  int get rustContentHash => -1509219725;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -82,6 +82,10 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 }
 
 abstract class RustLibApi extends BaseApi {
+  Future<SubtitleArtifact> crateApiWorkflowAcquireSubtitle({
+    required String candidateId,
+  });
+
   String crateApiSimpleComputeCid({
     required BigInt fileSize,
     required List<SampleChunk> chunks,
@@ -89,25 +93,17 @@ abstract class RustLibApi extends BaseApi {
 
   String crateApiSimpleDeriveSearchName({required String filename});
 
-  Future<Uint8List> crateApiXunleiDownloadXunlei({required String candidateId});
-
   Future<void> crateApiSimpleInitApp();
 
   VideoSamplePlan crateApiSimplePlanVideoSample({required BigInt fileSize});
 
-  List<RankedSubtitleCandidate> crateApiSimpleRankSubtitleCandidates({
-    required List<SubtitleCandidate> candidates,
-    required CandidateRankingContext context,
-  });
-
-  Future<List<XunleiCandidate>> crateApiXunleiSearchXunlei({
-    required String query,
-  });
-
-  SubtitlePreviewPage crateApiSimpleSubtitlePreviewPage({
-    required List<int> bytes,
+  Future<WorkflowSubtitlePreviewPage> crateApiWorkflowPreviewSubtitle({
+    required String candidateId,
     required int page,
-    required String format,
+  });
+
+  Future<List<WorkflowSubtitleCandidate>> crateApiWorkflowSearchSubtitles({
+    required String suggestedSearchName,
   });
 }
 
@@ -120,6 +116,39 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   });
 
   @override
+  Future<SubtitleArtifact> crateApiWorkflowAcquireSubtitle({
+    required String candidateId,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(candidateId, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 1,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_subtitle_artifact,
+          decodeErrorData: sse_decode_subtitle_failure,
+        ),
+        constMeta: kCrateApiWorkflowAcquireSubtitleConstMeta,
+        argValues: [candidateId],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWorkflowAcquireSubtitleConstMeta =>
+      const TaskConstMeta(
+        debugName: "acquire_subtitle",
+        argNames: ["candidateId"],
+      );
+
+  @override
   String crateApiSimpleComputeCid({
     required BigInt fileSize,
     required List<SampleChunk> chunks,
@@ -130,7 +159,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_u_64(fileSize, serializer);
           sse_encode_list_sample_chunk(chunks, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 1)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -155,7 +184,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
         callFfi: () {
           final serializer = SseSerializer(generalizedFrbRustBinding);
           sse_encode_String(filename, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 2)!;
+          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 3)!;
         },
         codec: SseCodec(
           decodeSuccessData: sse_decode_String,
@@ -172,39 +201,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(
         debugName: "derive_search_name",
         argNames: ["filename"],
-      );
-
-  @override
-  Future<Uint8List> crateApiXunleiDownloadXunlei({
-    required String candidateId,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(candidateId, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_prim_u_8_strict,
-          decodeErrorData: sse_decode_String,
-        ),
-        constMeta: kCrateApiXunleiDownloadXunleiConstMeta,
-        argValues: [candidateId],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiXunleiDownloadXunleiConstMeta =>
-      const TaskConstMeta(
-        debugName: "download_xunlei",
-        argNames: ["candidateId"],
       );
 
   @override
@@ -261,44 +257,49 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  List<RankedSubtitleCandidate> crateApiSimpleRankSubtitleCandidates({
-    required List<SubtitleCandidate> candidates,
-    required CandidateRankingContext context,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_subtitle_candidate(candidates, serializer);
-          sse_encode_box_autoadd_candidate_ranking_context(context, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 6)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_list_ranked_subtitle_candidate,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiSimpleRankSubtitleCandidatesConstMeta,
-        argValues: [candidates, context],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiSimpleRankSubtitleCandidatesConstMeta =>
-      const TaskConstMeta(
-        debugName: "rank_subtitle_candidates",
-        argNames: ["candidates", "context"],
-      );
-
-  @override
-  Future<List<XunleiCandidate>> crateApiXunleiSearchXunlei({
-    required String query,
+  Future<WorkflowSubtitlePreviewPage> crateApiWorkflowPreviewSubtitle({
+    required String candidateId,
+    required int page,
   }) {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
           final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(query, serializer);
+          sse_encode_String(candidateId, serializer);
+          sse_encode_u_32(page, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 6,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_workflow_subtitle_preview_page,
+          decodeErrorData: sse_decode_subtitle_failure,
+        ),
+        constMeta: kCrateApiWorkflowPreviewSubtitleConstMeta,
+        argValues: [candidateId, page],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiWorkflowPreviewSubtitleConstMeta =>
+      const TaskConstMeta(
+        debugName: "preview_subtitle",
+        argNames: ["candidateId", "page"],
+      );
+
+  @override
+  Future<List<WorkflowSubtitleCandidate>> crateApiWorkflowSearchSubtitles({
+    required String suggestedSearchName,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(suggestedSearchName, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -307,81 +308,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_list_xunlei_candidate,
-          decodeErrorData: sse_decode_String,
+          decodeSuccessData: sse_decode_list_workflow_subtitle_candidate,
+          decodeErrorData: sse_decode_subtitle_failure,
         ),
-        constMeta: kCrateApiXunleiSearchXunleiConstMeta,
-        argValues: [query],
+        constMeta: kCrateApiWorkflowSearchSubtitlesConstMeta,
+        argValues: [suggestedSearchName],
         apiImpl: this,
       ),
     );
   }
 
-  TaskConstMeta get kCrateApiXunleiSearchXunleiConstMeta =>
-      const TaskConstMeta(debugName: "search_xunlei", argNames: ["query"]);
-
-  @override
-  SubtitlePreviewPage crateApiSimpleSubtitlePreviewPage({
-    required List<int> bytes,
-    required int page,
-    required String format,
-  }) {
-    return handler.executeSync(
-      SyncTask(
-        callFfi: () {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_list_prim_u_8_loose(bytes, serializer);
-          sse_encode_u_32(page, serializer);
-          sse_encode_String(format, serializer);
-          return pdeCallFfi(generalizedFrbRustBinding, serializer, funcId: 8)!;
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_subtitle_preview_page,
-          decodeErrorData: sse_decode_String,
-        ),
-        constMeta: kCrateApiSimpleSubtitlePreviewPageConstMeta,
-        argValues: [bytes, page, format],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiSimpleSubtitlePreviewPageConstMeta =>
+  TaskConstMeta get kCrateApiWorkflowSearchSubtitlesConstMeta =>
       const TaskConstMeta(
-        debugName: "subtitle_preview_page",
-        argNames: ["bytes", "page", "format"],
+        debugName: "search_subtitles",
+        argNames: ["suggestedSearchName"],
       );
 
   @protected
   String dco_decode_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as String;
-  }
-
-  @protected
-  bool dco_decode_bool(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as bool;
-  }
-
-  @protected
-  CandidateRankingContext dco_decode_box_autoadd_candidate_ranking_context(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_candidate_ranking_context(raw);
-  }
-
-  @protected
-  double dco_decode_box_autoadd_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as double;
-  }
-
-  @protected
-  BigInt dco_decode_box_autoadd_u_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return dco_decode_u_64(raw);
   }
 
   @protected
@@ -397,24 +343,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  CandidateRankingContext dco_decode_candidate_ranking_context(dynamic raw) {
+  int dco_decode_i_32(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
-    return CandidateRankingContext(
-      searchName: dco_decode_String(arr[0]),
-      videoCid: dco_decode_opt_String(arr[1]),
-      videoDurationMillis: dco_decode_opt_box_autoadd_u_64(arr[2]),
-      preferredLanguages: dco_decode_list_String(arr[3]),
-      preferredFormats: dco_decode_list_String(arr[4]),
-    );
-  }
-
-  @protected
-  double dco_decode_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as double;
+    return raw as int;
   }
 
   @protected
@@ -436,9 +367,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<int> dco_decode_list_prim_u_8_loose(dynamic raw) {
+  List<MatchReason> dco_decode_list_match_reason(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw as List<int>;
+    return (raw as List<dynamic>).map(dco_decode_match_reason).toList();
   }
 
   @protected
@@ -448,61 +379,43 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<RankedSubtitleCandidate> dco_decode_list_ranked_subtitle_candidate(
-    dynamic raw,
-  ) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>)
-        .map(dco_decode_ranked_subtitle_candidate)
-        .toList();
-  }
-
-  @protected
   List<SampleChunk> dco_decode_list_sample_chunk(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_sample_chunk).toList();
   }
 
   @protected
-  List<SubtitleCandidate> dco_decode_list_subtitle_candidate(dynamic raw) {
+  List<WorkflowSubtitleCandidate> dco_decode_list_workflow_subtitle_candidate(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_subtitle_candidate).toList();
+    return (raw as List<dynamic>)
+        .map(dco_decode_workflow_subtitle_candidate)
+        .toList();
   }
 
   @protected
-  List<XunleiCandidate> dco_decode_list_xunlei_candidate(dynamic raw) {
+  MatchReason dco_decode_match_reason(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
-    return (raw as List<dynamic>).map(dco_decode_xunlei_candidate).toList();
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return MatchReason(
+      kind: dco_decode_match_reason_kind(arr[0]),
+      value: dco_decode_opt_String(arr[1]),
+    );
+  }
+
+  @protected
+  MatchReasonKind dco_decode_match_reason_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return MatchReasonKind.values[raw as int];
   }
 
   @protected
   String? dco_decode_opt_String(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_String(raw);
-  }
-
-  @protected
-  double? dco_decode_opt_box_autoadd_f_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_f_64(raw);
-  }
-
-  @protected
-  BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    return raw == null ? null : dco_decode_box_autoadd_u_64(raw);
-  }
-
-  @protected
-  RankedSubtitleCandidate dco_decode_ranked_subtitle_candidate(dynamic raw) {
-    // Codec=Dco (DartCObject based), see doc to use other codecs
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
-    return RankedSubtitleCandidate(
-      candidate: dco_decode_subtitle_candidate(arr[0]),
-      score: dco_decode_i_64(arr[1]),
-    );
   }
 
   @protected
@@ -518,37 +431,47 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  SubtitleCandidate dco_decode_subtitle_candidate(dynamic raw) {
+  SubtitleArtifact dco_decode_subtitle_artifact(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
-    return SubtitleCandidate(
-      id: dco_decode_String(arr[0]),
-      name: dco_decode_String(arr[1]),
-      cid: dco_decode_opt_String(arr[2]),
-      durationMillis: dco_decode_opt_box_autoadd_u_64(arr[3]),
-      language: dco_decode_opt_String(arr[4]),
-      format: dco_decode_String(arr[5]),
-      upstreamScore: dco_decode_i_64(arr[6]),
-      fingerprintMatch: dco_decode_bool(arr[7]),
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SubtitleArtifact(
+      candidateId: dco_decode_String(arr[0]),
+      bytes: dco_decode_list_prim_u_8_strict(arr[1]),
+      format: dco_decode_subtitle_format(arr[2]),
     );
   }
 
   @protected
-  SubtitlePreviewPage dco_decode_subtitle_preview_page(dynamic raw) {
+  SubtitleFailure dco_decode_subtitle_failure(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 6)
-      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
-    return SubtitlePreviewPage(
-      lines: dco_decode_list_String(arr[0]),
-      page: dco_decode_u_32(arr[1]),
-      pageSize: dco_decode_u_32(arr[2]),
-      totalLines: dco_decode_u_32(arr[3]),
-      totalPages: dco_decode_u_32(arr[4]),
-      encoding: dco_decode_String(arr[5]),
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
+    return SubtitleFailure(
+      operation: dco_decode_subtitle_operation(arr[0]),
+      kind: dco_decode_subtitle_failure_kind(arr[1]),
+      detail: dco_decode_opt_String(arr[2]),
     );
+  }
+
+  @protected
+  SubtitleFailureKind dco_decode_subtitle_failure_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SubtitleFailureKind.values[raw as int];
+  }
+
+  @protected
+  SubtitleFormat dco_decode_subtitle_format(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SubtitleFormat.values[raw as int];
+  }
+
+  @protected
+  SubtitleOperation dco_decode_subtitle_operation(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return SubtitleOperation.values[raw as int];
   }
 
   @protected
@@ -588,19 +511,36 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  XunleiCandidate dco_decode_xunlei_candidate(dynamic raw) {
+  WorkflowSubtitleCandidate dco_decode_workflow_subtitle_candidate(
+    dynamic raw,
+  ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 7)
-      throw Exception('unexpected arr length: expect 7 but see ${arr.length}');
-    return XunleiCandidate(
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
+    return WorkflowSubtitleCandidate(
+      id: dco_decode_String(arr[0]),
+      name: dco_decode_String(arr[1]),
+      languages: dco_decode_list_String(arr[2]),
+      format: dco_decode_subtitle_format(arr[3]),
+      matchScore: dco_decode_i_64(arr[4]),
+      matchReasons: dco_decode_list_match_reason(arr[5]),
+    );
+  }
+
+  @protected
+  WorkflowSubtitlePreviewPage dco_decode_workflow_subtitle_preview_page(
+    dynamic raw,
+  ) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return WorkflowSubtitlePreviewPage(
       candidateId: dco_decode_String(arr[0]),
-      extension_: dco_decode_String(arr[1]),
-      name: dco_decode_String(arr[2]),
-      durationMs: dco_decode_opt_box_autoadd_u_64(arr[3]),
-      languages: dco_decode_list_String(arr[4]),
-      upstreamScore: dco_decode_opt_box_autoadd_f_64(arr[5]),
-      fingerprintScore: dco_decode_opt_box_autoadd_f_64(arr[6]),
+      lines: dco_decode_list_String(arr[1]),
+      page: dco_decode_u_32(arr[2]),
+      totalPages: dco_decode_u_32(arr[3]),
     );
   }
 
@@ -612,32 +552,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  bool sse_decode_bool(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getUint8() != 0;
-  }
-
-  @protected
-  CandidateRankingContext sse_decode_box_autoadd_candidate_ranking_context(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_candidate_ranking_context(deserializer));
-  }
-
-  @protected
-  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_f_64(deserializer));
-  }
-
-  @protected
-  BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return (sse_decode_u_64(deserializer));
-  }
-
-  @protected
   ByteRange sse_decode_byte_range(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_offset = sse_decode_u_64(deserializer);
@@ -646,28 +560,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  CandidateRankingContext sse_decode_candidate_ranking_context(
-    SseDeserializer deserializer,
-  ) {
+  int sse_decode_i_32(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_searchName = sse_decode_String(deserializer);
-    var var_videoCid = sse_decode_opt_String(deserializer);
-    var var_videoDurationMillis = sse_decode_opt_box_autoadd_u_64(deserializer);
-    var var_preferredLanguages = sse_decode_list_String(deserializer);
-    var var_preferredFormats = sse_decode_list_String(deserializer);
-    return CandidateRankingContext(
-      searchName: var_searchName,
-      videoCid: var_videoCid,
-      videoDurationMillis: var_videoDurationMillis,
-      preferredLanguages: var_preferredLanguages,
-      preferredFormats: var_preferredFormats,
-    );
-  }
-
-  @protected
-  double sse_decode_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getFloat64();
+    return deserializer.buffer.getInt32();
   }
 
   @protected
@@ -701,10 +596,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
+  List<MatchReason> sse_decode_list_match_reason(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+
     var len_ = sse_decode_i_32(deserializer);
-    return deserializer.buffer.getUint8List(len_);
+    var ans_ = <MatchReason>[];
+    for (var idx_ = 0; idx_ < len_; ++idx_) {
+      ans_.add(sse_decode_match_reason(deserializer));
+    }
+    return ans_;
   }
 
   @protected
@@ -712,20 +612,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
-  }
-
-  @protected
-  List<RankedSubtitleCandidate> sse_decode_list_ranked_subtitle_candidate(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <RankedSubtitleCandidate>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_ranked_subtitle_candidate(deserializer));
-    }
-    return ans_;
   }
 
   @protected
@@ -741,31 +627,32 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  List<SubtitleCandidate> sse_decode_list_subtitle_candidate(
+  List<WorkflowSubtitleCandidate> sse_decode_list_workflow_subtitle_candidate(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
     var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <SubtitleCandidate>[];
+    var ans_ = <WorkflowSubtitleCandidate>[];
     for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_subtitle_candidate(deserializer));
+      ans_.add(sse_decode_workflow_subtitle_candidate(deserializer));
     }
     return ans_;
   }
 
   @protected
-  List<XunleiCandidate> sse_decode_list_xunlei_candidate(
-    SseDeserializer deserializer,
-  ) {
+  MatchReason sse_decode_match_reason(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_kind = sse_decode_match_reason_kind(deserializer);
+    var var_value = sse_decode_opt_String(deserializer);
+    return MatchReason(kind: var_kind, value: var_value);
+  }
 
-    var len_ = sse_decode_i_32(deserializer);
-    var ans_ = <XunleiCandidate>[];
-    for (var idx_ = 0; idx_ < len_; ++idx_) {
-      ans_.add(sse_decode_xunlei_candidate(deserializer));
-    }
-    return ans_;
+  @protected
+  MatchReasonKind sse_decode_match_reason_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return MatchReasonKind.values[inner];
   }
 
   @protected
@@ -780,38 +667,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_f_64(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    if (sse_decode_bool(deserializer)) {
-      return (sse_decode_box_autoadd_u_64(deserializer));
-    } else {
-      return null;
-    }
-  }
-
-  @protected
-  RankedSubtitleCandidate sse_decode_ranked_subtitle_candidate(
-    SseDeserializer deserializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_candidate = sse_decode_subtitle_candidate(deserializer);
-    var var_score = sse_decode_i_64(deserializer);
-    return RankedSubtitleCandidate(candidate: var_candidate, score: var_score);
-  }
-
-  @protected
   SampleChunk sse_decode_sample_chunk(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_offset = sse_decode_u_64(deserializer);
@@ -820,49 +675,54 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  SubtitleCandidate sse_decode_subtitle_candidate(
-    SseDeserializer deserializer,
-  ) {
+  SubtitleArtifact sse_decode_subtitle_artifact(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_id = sse_decode_String(deserializer);
-    var var_name = sse_decode_String(deserializer);
-    var var_cid = sse_decode_opt_String(deserializer);
-    var var_durationMillis = sse_decode_opt_box_autoadd_u_64(deserializer);
-    var var_language = sse_decode_opt_String(deserializer);
-    var var_format = sse_decode_String(deserializer);
-    var var_upstreamScore = sse_decode_i_64(deserializer);
-    var var_fingerprintMatch = sse_decode_bool(deserializer);
-    return SubtitleCandidate(
-      id: var_id,
-      name: var_name,
-      cid: var_cid,
-      durationMillis: var_durationMillis,
-      language: var_language,
+    var var_candidateId = sse_decode_String(deserializer);
+    var var_bytes = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_format = sse_decode_subtitle_format(deserializer);
+    return SubtitleArtifact(
+      candidateId: var_candidateId,
+      bytes: var_bytes,
       format: var_format,
-      upstreamScore: var_upstreamScore,
-      fingerprintMatch: var_fingerprintMatch,
     );
   }
 
   @protected
-  SubtitlePreviewPage sse_decode_subtitle_preview_page(
+  SubtitleFailure sse_decode_subtitle_failure(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_operation = sse_decode_subtitle_operation(deserializer);
+    var var_kind = sse_decode_subtitle_failure_kind(deserializer);
+    var var_detail = sse_decode_opt_String(deserializer);
+    return SubtitleFailure(
+      operation: var_operation,
+      kind: var_kind,
+      detail: var_detail,
+    );
+  }
+
+  @protected
+  SubtitleFailureKind sse_decode_subtitle_failure_kind(
     SseDeserializer deserializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_lines = sse_decode_list_String(deserializer);
-    var var_page = sse_decode_u_32(deserializer);
-    var var_pageSize = sse_decode_u_32(deserializer);
-    var var_totalLines = sse_decode_u_32(deserializer);
-    var var_totalPages = sse_decode_u_32(deserializer);
-    var var_encoding = sse_decode_String(deserializer);
-    return SubtitlePreviewPage(
-      lines: var_lines,
-      page: var_page,
-      pageSize: var_pageSize,
-      totalLines: var_totalLines,
-      totalPages: var_totalPages,
-      encoding: var_encoding,
-    );
+    var inner = sse_decode_i_32(deserializer);
+    return SubtitleFailureKind.values[inner];
+  }
+
+  @protected
+  SubtitleFormat sse_decode_subtitle_format(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SubtitleFormat.values[inner];
+  }
+
+  @protected
+  SubtitleOperation sse_decode_subtitle_operation(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var inner = sse_decode_i_32(deserializer);
+    return SubtitleOperation.values[inner];
   }
 
   @protected
@@ -897,63 +757,53 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  XunleiCandidate sse_decode_xunlei_candidate(SseDeserializer deserializer) {
+  WorkflowSubtitleCandidate sse_decode_workflow_subtitle_candidate(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_candidateId = sse_decode_String(deserializer);
-    var var_extension_ = sse_decode_String(deserializer);
+    var var_id = sse_decode_String(deserializer);
     var var_name = sse_decode_String(deserializer);
-    var var_durationMs = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_languages = sse_decode_list_String(deserializer);
-    var var_upstreamScore = sse_decode_opt_box_autoadd_f_64(deserializer);
-    var var_fingerprintScore = sse_decode_opt_box_autoadd_f_64(deserializer);
-    return XunleiCandidate(
-      candidateId: var_candidateId,
-      extension_: var_extension_,
+    var var_format = sse_decode_subtitle_format(deserializer);
+    var var_matchScore = sse_decode_i_64(deserializer);
+    var var_matchReasons = sse_decode_list_match_reason(deserializer);
+    return WorkflowSubtitleCandidate(
+      id: var_id,
       name: var_name,
-      durationMs: var_durationMs,
       languages: var_languages,
-      upstreamScore: var_upstreamScore,
-      fingerprintScore: var_fingerprintScore,
+      format: var_format,
+      matchScore: var_matchScore,
+      matchReasons: var_matchReasons,
     );
   }
 
   @protected
-  int sse_decode_i_32(SseDeserializer deserializer) {
+  WorkflowSubtitlePreviewPage sse_decode_workflow_subtitle_preview_page(
+    SseDeserializer deserializer,
+  ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    return deserializer.buffer.getInt32();
+    var var_candidateId = sse_decode_String(deserializer);
+    var var_lines = sse_decode_list_String(deserializer);
+    var var_page = sse_decode_u_32(deserializer);
+    var var_totalPages = sse_decode_u_32(deserializer);
+    return WorkflowSubtitlePreviewPage(
+      candidateId: var_candidateId,
+      lines: var_lines,
+      page: var_page,
+      totalPages: var_totalPages,
+    );
+  }
+
+  @protected
+  bool sse_decode_bool(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getUint8() != 0;
   }
 
   @protected
   void sse_encode_String(String self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_list_prim_u_8_strict(utf8.encoder.convert(self), serializer);
-  }
-
-  @protected
-  void sse_encode_bool(bool self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putUint8(self ? 1 : 0);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_candidate_ranking_context(
-    CandidateRankingContext self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_candidate_ranking_context(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_f_64(self, serializer);
-  }
-
-  @protected
-  void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_u_64(self, serializer);
   }
 
   @protected
@@ -964,22 +814,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_candidate_ranking_context(
-    CandidateRankingContext self,
-    SseSerializer serializer,
-  ) {
+  void sse_encode_i_32(int self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.searchName, serializer);
-    sse_encode_opt_String(self.videoCid, serializer);
-    sse_encode_opt_box_autoadd_u_64(self.videoDurationMillis, serializer);
-    sse_encode_list_String(self.preferredLanguages, serializer);
-    sse_encode_list_String(self.preferredFormats, serializer);
-  }
-
-  @protected
-  void sse_encode_f_64(double self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putFloat64(self);
+    serializer.buffer.putInt32(self);
   }
 
   @protected
@@ -1010,15 +847,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_prim_u_8_loose(
-    List<int> self,
+  void sse_encode_list_match_reason(
+    List<MatchReason> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
-    serializer.buffer.putUint8List(
-      self is Uint8List ? self : Uint8List.fromList(self),
-    );
+    for (final item in self) {
+      sse_encode_match_reason(item, serializer);
+    }
   }
 
   @protected
@@ -1029,18 +866,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     serializer.buffer.putUint8List(self);
-  }
-
-  @protected
-  void sse_encode_list_ranked_subtitle_candidate(
-    List<RankedSubtitleCandidate> self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_ranked_subtitle_candidate(item, serializer);
-    }
   }
 
   @protected
@@ -1056,27 +881,31 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_list_subtitle_candidate(
-    List<SubtitleCandidate> self,
+  void sse_encode_list_workflow_subtitle_candidate(
+    List<WorkflowSubtitleCandidate> self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_i_32(self.length, serializer);
     for (final item in self) {
-      sse_encode_subtitle_candidate(item, serializer);
+      sse_encode_workflow_subtitle_candidate(item, serializer);
     }
   }
 
   @protected
-  void sse_encode_list_xunlei_candidate(
-    List<XunleiCandidate> self,
+  void sse_encode_match_reason(MatchReason self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_match_reason_kind(self.kind, serializer);
+    sse_encode_opt_String(self.value, serializer);
+  }
+
+  @protected
+  void sse_encode_match_reason_kind(
+    MatchReasonKind self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_i_32(self.length, serializer);
-    for (final item in self) {
-      sse_encode_xunlei_candidate(item, serializer);
-    }
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -1090,36 +919,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_f_64(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-
-    sse_encode_bool(self != null, serializer);
-    if (self != null) {
-      sse_encode_box_autoadd_u_64(self, serializer);
-    }
-  }
-
-  @protected
-  void sse_encode_ranked_subtitle_candidate(
-    RankedSubtitleCandidate self,
-    SseSerializer serializer,
-  ) {
-    // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_subtitle_candidate(self.candidate, serializer);
-    sse_encode_i_64(self.score, serializer);
-  }
-
-  @protected
   void sse_encode_sample_chunk(SampleChunk self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self.offset, serializer);
@@ -1127,33 +926,52 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_subtitle_candidate(
-    SubtitleCandidate self,
+  void sse_encode_subtitle_artifact(
+    SubtitleArtifact self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_String(self.id, serializer);
-    sse_encode_String(self.name, serializer);
-    sse_encode_opt_String(self.cid, serializer);
-    sse_encode_opt_box_autoadd_u_64(self.durationMillis, serializer);
-    sse_encode_opt_String(self.language, serializer);
-    sse_encode_String(self.format, serializer);
-    sse_encode_i_64(self.upstreamScore, serializer);
-    sse_encode_bool(self.fingerprintMatch, serializer);
+    sse_encode_String(self.candidateId, serializer);
+    sse_encode_list_prim_u_8_strict(self.bytes, serializer);
+    sse_encode_subtitle_format(self.format, serializer);
   }
 
   @protected
-  void sse_encode_subtitle_preview_page(
-    SubtitlePreviewPage self,
+  void sse_encode_subtitle_failure(
+    SubtitleFailure self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_list_String(self.lines, serializer);
-    sse_encode_u_32(self.page, serializer);
-    sse_encode_u_32(self.pageSize, serializer);
-    sse_encode_u_32(self.totalLines, serializer);
-    sse_encode_u_32(self.totalPages, serializer);
-    sse_encode_String(self.encoding, serializer);
+    sse_encode_subtitle_operation(self.operation, serializer);
+    sse_encode_subtitle_failure_kind(self.kind, serializer);
+    sse_encode_opt_String(self.detail, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_failure_kind(
+    SubtitleFailureKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_format(
+    SubtitleFormat self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
+  }
+
+  @protected
+  void sse_encode_subtitle_operation(
+    SubtitleOperation self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_i_32(self.index, serializer);
   }
 
   @protected
@@ -1190,23 +1008,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
-  void sse_encode_xunlei_candidate(
-    XunleiCandidate self,
+  void sse_encode_workflow_subtitle_candidate(
+    WorkflowSubtitleCandidate self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_String(self.id, serializer);
+    sse_encode_String(self.name, serializer);
+    sse_encode_list_String(self.languages, serializer);
+    sse_encode_subtitle_format(self.format, serializer);
+    sse_encode_i_64(self.matchScore, serializer);
+    sse_encode_list_match_reason(self.matchReasons, serializer);
+  }
+
+  @protected
+  void sse_encode_workflow_subtitle_preview_page(
+    WorkflowSubtitlePreviewPage self,
     SseSerializer serializer,
   ) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_String(self.candidateId, serializer);
-    sse_encode_String(self.extension_, serializer);
-    sse_encode_String(self.name, serializer);
-    sse_encode_opt_box_autoadd_u_64(self.durationMs, serializer);
-    sse_encode_list_String(self.languages, serializer);
-    sse_encode_opt_box_autoadd_f_64(self.upstreamScore, serializer);
-    sse_encode_opt_box_autoadd_f_64(self.fingerprintScore, serializer);
+    sse_encode_list_String(self.lines, serializer);
+    sse_encode_u_32(self.page, serializer);
+    sse_encode_u_32(self.totalPages, serializer);
   }
 
   @protected
-  void sse_encode_i_32(int self, SseSerializer serializer) {
+  void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    serializer.buffer.putInt32(self);
+    serializer.buffer.putUint8(self ? 1 : 0);
   }
 }

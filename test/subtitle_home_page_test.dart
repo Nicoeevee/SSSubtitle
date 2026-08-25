@@ -5,7 +5,9 @@ import 'package:ss_subtitle/app.dart';
 import 'package:ss_subtitle/src/core/subtitle_core.dart';
 
 void main() {
-  testWidgets('紧凑布局可从视频名搜索、预览并翻页', (tester) async {
+  testWidgets('compact layout searches, previews, and requests another page', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(700, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -39,11 +41,12 @@ void main() {
     await tester.pump();
     await tester.tap(nextPage);
     await tester.pump();
+    await tester.pump();
     expect(find.text('第 2/2 页'), findsOneWidget);
     expect(find.text('第 31 行'), findsOneWidget);
   });
 
-  testWidgets('宽屏布局支持键盘切换候选和下载', (tester) async {
+  testWidgets('wide layout switches Candidate and acquires it', (tester) async {
     tester.view.physicalSize = const Size(1200, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -69,7 +72,7 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(
-      find.text('已保存 archive.example@documentary_episode.ass'),
+      find.text('字幕已保存为 archive.example@documentary_episode.ass'),
       findsOneWidget,
     );
   });
@@ -84,30 +87,39 @@ class _WidgetCore implements SubtitleCore {
     SubtitleCandidate(
       id: 'first',
       name: '$query 中文字幕.srt',
-      language: '简体中文',
+      languages: const ['简体中文'],
       format: 'SRT',
-      score: 96,
-      reasons: const ['文件名完全匹配'],
+      matchScore: 96,
+      matchReasons: const ['文件名完全匹配'],
     ),
-    const SubtitleCandidate(
+    SubtitleCandidate(
       id: 'second',
       name: '第二候选.ass',
-      language: '简体中文',
+      languages: ['简体中文'],
       format: 'ASS',
-      score: 88,
-      reasons: ['时长接近'],
+      matchScore: 88,
+      matchReasons: ['时长接近'],
     ),
   ];
 
   @override
-  Future<List<String>> preview(SubtitleCandidate candidate) async =>
-      List.generate(45, (index) => '第 ${index + 1} 行');
+  Future<SubtitlePreviewPage> preview(
+    SubtitleCandidate candidate,
+    int page,
+  ) async {
+    final lines = List<String>.generate(45, (index) => '第 ${index + 1} 行');
+    final start = (page - 1) * 30;
+    return SubtitlePreviewPage(
+      candidateId: candidate.id,
+      lines: lines.sublist(start, (start + 30).clamp(0, lines.length)),
+      page: page,
+      totalPages: 2,
+    );
+  }
 
   @override
-  Future<String> download(
+  Future<SubtitleSaveOutcome> download(
     SubtitleCandidate candidate, {
     required String videoFileName,
-  }) async =>
-      '已保存 ${deriveSubtitleBaseName(videoFileName)}.'
-      '${candidate.format.toLowerCase()}';
+  }) async => SubtitleSaveOutcome.saved;
 }

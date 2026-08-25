@@ -2,7 +2,37 @@
 
 ## Status and authority
 
-The architecture is accepted; implementation has not started. Implement this document as a replacement of the existing production path, not as an alternative path.
+The architecture is accepted. The replacement implementation is in progress and this document remains the authoritative handoff for the work. Implement it as a replacement of the existing production path, not as an alternative path.
+
+## Current implementation checkpoint (2026-08-26)
+
+The current working tree implements Steps 1–4 and 6–8 below. Step 5 is complete for the native Windows production path, but the real browser Web/Worker responsiveness evidence is still pending. Step 9 therefore remains open; a successful Web build or a host `flutter_tester` run is not browser acceptance evidence.
+
+| Step | Status | Observed evidence |
+| --- | --- | --- |
+| 1. Red interface tests | Complete | `rust/tests/workflow_interface.rs`, `test/rust_subtitle_core_test.dart`, page-based Controller/Widget fakes, stale completion and cancel coverage. Default tests use no live Provider. |
+| 2. Candidate Search | Complete | Rust owns Suggested Search Name validation, filtering, deduplication, stable ordering, Match Score, and structured Match Reasons. |
+| 3. Candidate/Artifact store | Complete | Bounded Candidate and Artifact state, byte budget, recent-use touch, Candidate eviction, shared materialization, and single-flight tests are present. |
+| 4. Preview/Artifact | Complete | Canonical decode/format validation, 1-based 30-line pages, random-access page requests, typed Artifact format, and Preview/Acquisition reuse are covered. |
+| 5. Windows/Web non-blocking | Partial | Windows release and native generated-FRB offline smoke pass, including heartbeat and near-limit materialization. Default Web/WASM builds pass; actual Chrome/Worker smoke is pending because the local `--platform=chrome` runner hung. |
+| 6. FRB/Dart adapter | Complete | FRB was regenerated from the three async operations; generated types stop at `RustSubtitleCore`, which maps typed failures and save outcomes. |
+| 7. Controller/UI | Complete | Only the authoritative Preview page is retained; Search/Preview/Candidate/page/cancel relevance guards and typed save outcomes are covered. |
+| 8. Delete shallow path | Complete | Old production callers, Dart bytes cache, all-page collector, Dart ranking/Match Reason decisions, and Controller-side second pagination are removed. |
+| 9. Complete replacement validation | Pending | Rust, Flutter, Windows release, default Web build, and Deslop gates pass; actual browser Web/Worker responsiveness and the final all-gates acceptance remain. |
+
+Optional live smoke was run separately with `SSSUBTITLE_LIVE_XUNLEI=1`. `Interstellar` and `Breaking Bad S01E01` each returned at least three real candidates and completed Search → Preview → Acquisition. This smoke is informational and never replaces deterministic acceptance.
+
+The latest Deslop rescan reported generation 12 with no clusters added, removed, or updated. Existing duplicate signals in test setup, same-file Xunlei request shapes, and the pre-existing responsive UI layout remain outside this workflow handoff.
+
+### Next action
+
+Start with a real browser runner, not the Windows `flutter_tester` host:
+
+```powershell
+flutter test --platform=chrome --cross-origin-isolation test/rust_workflow_smoke_test.dart --dart-define=SSSUBTITLE_OFFLINE_SMOKE=true
+```
+
+Record whether Chrome/Worker event progress is observed during Search, Preview, and first near-limit Artifact materialization. If the runner cannot start or hangs, record that as an environment gate failure and fix the runner/toolchain before changing workflow behavior. Restore the default production Web package after any offline-smoke build, then rerun the complete Step 9 matrix.
 
 Read first:
 
@@ -377,13 +407,13 @@ Live Xunlei access is optional and conditional on Provider availability and CORS
 ## Final handoff checklist
 
 - [ ] ADR-0002 remains satisfied without an undocumented exception.
-- [ ] Exactly three strongly typed asynchronous Rust operations form the production subtitle interface.
-- [ ] Rust owns normalization, ranking, structured Match Reasons, validation, decode, and pagination.
-- [ ] Xunlei transport and Provider locators remain private.
-- [ ] Candidate and Artifact state is bounded; concurrent materialization is single-flight.
-- [ ] Flutter owns localization and platform save; Artifact bytes stop inside `RustSubtitleCore`.
-- [ ] Controller applies only relevant asynchronous completions.
-- [ ] Old production paths and implementation-coupled tests are deleted.
-- [ ] Default tests perform no live network access.
+- [x] Exactly three strongly typed asynchronous Rust operations form the production subtitle interface.
+- [x] Rust owns normalization, ranking, structured Match Reasons, validation, decode, and pagination.
+- [x] Xunlei transport and Provider locators remain private.
+- [x] Candidate and Artifact state is bounded; concurrent materialization is single-flight.
+- [x] Flutter owns localization and platform save; Artifact bytes stop inside `RustSubtitleCore`.
+- [x] Controller applies only relevant asynchronous completions.
+- [x] Old production paths and implementation-coupled tests are deleted.
+- [x] Default tests perform no live network access.
 - [ ] Rust, Flutter, Windows, Web, and Deslop gates each have observed evidence.
 - [ ] The working-tree diff contains only this feature and regenerated bridge outputs.

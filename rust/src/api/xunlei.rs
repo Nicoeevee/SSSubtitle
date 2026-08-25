@@ -276,7 +276,14 @@ fn parse_search_payload(body: &[u8]) -> Result<Vec<XunleiCandidate>, String> {
 }
 
 fn stable_candidate_id(url: &str) -> String {
-    format!("{:x}", Sha1::digest(url.as_bytes()))
+    let digest = Sha1::digest(url.as_bytes());
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut id = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        id.push(HEX[(byte >> 4) as usize] as char);
+        id.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    id
 }
 
 fn build_client(timeout: Duration) -> Result<reqwest::Client, String> {
@@ -399,14 +406,18 @@ fn subtitle_sample_text(bytes: &[u8]) -> String {
 
     if sample.starts_with(&[0xff, 0xfe]) {
         let units = sample[2..]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         return String::from_utf16_lossy(&units);
     }
     if sample.starts_with(&[0xfe, 0xff]) {
         let units = sample[2..]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         return String::from_utf16_lossy(&units);

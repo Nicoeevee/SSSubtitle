@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "SSSubtitle cross-platform subtitle search, preview, and download app.",
+    "description": "SSSubtitle desktop and Web subtitle search, preview, and download app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

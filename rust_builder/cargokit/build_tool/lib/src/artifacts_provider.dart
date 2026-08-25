@@ -1,6 +1,3 @@
-/// This is copied from Cargokit (which is the official way to use it currently)
-/// Details: https://fzyzcjy.github.io/flutter_rust_bridge/manual/integrate/builtin
-
 import 'dart:io';
 
 import 'package:ed25519_edwards/ed25519_edwards.dart';
@@ -36,19 +33,13 @@ class Artifact {
     }
   }
 
-  Artifact({
-    required this.path,
-    required this.finalFileName,
-  });
+  Artifact({required this.path, required this.finalFileName});
 }
 
 final _log = Logger('artifacts_provider');
 
 class ArtifactProvider {
-  ArtifactProvider({
-    required this.environment,
-    required this.userOptions,
-  });
+  ArtifactProvider({required this.environment, required this.userOptions});
 
   final BuildEnvironment environment;
   final CargokitUserOptions userOptions;
@@ -82,13 +73,15 @@ class ArtifactProvider {
           libraryName: environment.crateInfo.packageName,
           aritifactType: AritifactType.staticlib,
           remote: false,
-        )
+        ),
       };
       final artifacts = artifactNames
-          .map((artifactName) => Artifact(
-                path: path.join(targetDir, artifactName),
-                finalFileName: artifactName,
-              ))
+          .map(
+            (artifactName) => Artifact(
+              path: path.join(targetDir, artifactName),
+              finalFileName: artifactName,
+            ),
+          )
           .where((element) => File(element.path).existsSync())
           .toList();
       result[target] = artifacts;
@@ -97,7 +90,8 @@ class ArtifactProvider {
   }
 
   Future<Map<Target, List<Artifact>>> _getPrecompiledArtifacts(
-      List<Target> targets) async {
+    List<Target> targets,
+  ) async {
     if (userOptions.usePrecompiledBinaries == false) {
       _log.info('Precompiled binaries are disabled');
       return {};
@@ -108,13 +102,19 @@ class ArtifactProvider {
     }
 
     final start = Stopwatch()..start();
-    final crateHash = CrateHash.compute(environment.manifestDir,
-        tempStorage: environment.targetTempDir);
+    final crateHash = CrateHash.compute(
+      environment.manifestDir,
+      tempStorage: environment.targetTempDir,
+    );
     _log.fine(
-        'Computed crate hash $crateHash in ${start.elapsedMilliseconds}ms');
+      'Computed crate hash $crateHash in ${start.elapsedMilliseconds}ms',
+    );
 
-    final downloadedArtifactsDir =
-        path.join(environment.targetTempDir, 'precompiled', crateHash);
+    final downloadedArtifactsDir = path.join(
+      environment.targetTempDir,
+      'precompiled',
+      crateHash,
+    );
     Directory(downloadedArtifactsDir).createSync(recursive: true);
 
     final res = <Target, List<Artifact>>{};
@@ -131,8 +131,10 @@ class ArtifactProvider {
         final fileName = PrecompileBinaries.fileName(target, artifact);
         final downloadedPath = path.join(downloadedArtifactsDir, fileName);
         if (!File(downloadedPath).existsSync()) {
-          final signatureFileName =
-              PrecompileBinaries.signatureFileName(target, artifact);
+          final signatureFileName = PrecompileBinaries.signatureFileName(
+            target,
+            artifact,
+          );
           await _tryDownloadArtifacts(
             crateHash: crateHash,
             fileName: fileName,
@@ -141,10 +143,9 @@ class ArtifactProvider {
           );
         }
         if (File(downloadedPath).existsSync()) {
-          artifactsForTarget.add(Artifact(
-            path: downloadedPath,
-            finalFileName: artifact,
-          ));
+          artifactsForTarget.add(
+            Artifact(path: downloadedPath, finalFileName: artifact),
+          );
         } else {
           break;
         }
@@ -171,7 +172,8 @@ class ArtifactProvider {
         if (attempt++ < maxAttempts &&
             (e.osError?.errorCode == 54 || e.osError?.errorCode == 10054)) {
           _log.severe(
-              'Failed to download $url: $e, attempt $attempt of $maxAttempts, will retry...');
+            'Failed to download $url: $e, attempt $attempt of $maxAttempts, will retry...',
+          );
           await Future.delayed(Duration(seconds: 1));
           continue;
         } else {
@@ -195,12 +197,14 @@ class ArtifactProvider {
     final signature = await _get(signatureUrl);
     if (signature.statusCode == 404) {
       _log.warning(
-          'Precompiled binaries not available for crate hash $crateHash ($fileName)');
+        'Precompiled binaries not available for crate hash $crateHash ($fileName)',
+      );
       return;
     }
     if (signature.statusCode != 200) {
       _log.severe(
-          'Failed to download signature $signatureUrl: status ${signature.statusCode}');
+        'Failed to download signature $signatureUrl: status ${signature.statusCode}',
+      );
       return;
     }
     _log.fine('Downloading binary from $url');
@@ -210,7 +214,10 @@ class ArtifactProvider {
       return;
     }
     if (verify(
-        precompiledBinaries.publicKey, res.bodyBytes, signature.bodyBytes)) {
+      precompiledBinaries.publicKey,
+      res.bodyBytes,
+      signature.bodyBytes,
+    )) {
       File(finalPath).writeAsBytesSync(res.bodyBytes);
     } else {
       _log.shout('Signature verification failed! Ignoring binary.');
@@ -218,10 +225,7 @@ class ArtifactProvider {
   }
 }
 
-enum AritifactType {
-  staticlib,
-  dylib,
-}
+enum AritifactType { staticlib, dylib }
 
 AritifactType artifactTypeForTarget(Target target) {
   if (target.darwinPlatform != null) {
@@ -251,7 +255,7 @@ List<String> getArtifactNames({
       return [
         '$libraryName.dll',
         '$libraryName.dll.lib',
-        if (!remote) '$libraryName.pdb'
+        if (!remote) '$libraryName.pdb',
       ];
     }
   } else if (target.rust.contains('-linux-')) {

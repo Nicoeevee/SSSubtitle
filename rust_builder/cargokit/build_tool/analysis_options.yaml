@@ -16,6 +16,12 @@
 
 include: package:lints/recommended.yaml
 
+analyzer:
+  errors:
+    # Upstream Cargokit files begin with provenance doc comments rather than a
+    # library declaration. Keep the vendored source byte-for-byte compatible.
+    dangling_library_doc_comments: ignore
+
 # Uncomment the following section to specify additional rules.
 
 linter:

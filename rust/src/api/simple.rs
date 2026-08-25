@@ -133,7 +133,14 @@ pub fn compute_cid(file_size: u64, mut chunks: Vec<SampleChunk>) -> Result<Strin
     for chunk in chunks {
         sha1.update(chunk.bytes);
     }
-    Ok(format!("{:X}", sha1.finalize()))
+    let digest = sha1.finalize();
+    const HEX: &[u8; 16] = b"0123456789ABCDEF";
+    let mut cid = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        cid.push(HEX[(byte >> 4) as usize] as char);
+        cid.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    Ok(cid)
 }
 
 #[flutter_rust_bridge::frb(sync)]
@@ -217,7 +224,7 @@ fn decode_utf16(bytes: &[u8], little_endian: bool) -> Result<String, String> {
     if !bytes.len().is_multiple_of(2) {
         return Err("UTF-16 subtitle has an odd byte count".into());
     }
-    let units = bytes.chunks_exact(2).map(|pair| {
+    let units = bytes.as_chunks::<2>().0.iter().map(|pair| {
         if little_endian {
             u16::from_le_bytes([pair[0], pair[1]])
         } else {

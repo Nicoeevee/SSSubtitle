@@ -1,15 +1,26 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:m3e_core/m3e_core.dart';
 import 'package:ss_subtitle/src/controller/subtitle_controller.dart';
 import 'package:ss_subtitle/src/core/subtitle_core.dart';
+import 'package:ss_subtitle/src/platform/video_folder.dart';
 import 'package:ss_subtitle/src/platform/video_picker.dart';
 import 'package:ss_subtitle/src/theme/app_theme.dart';
 
+bool _hasDirectorySeparator(String path) => path.contains(RegExp(r'[\\/]'));
+
 class SubtitleHomePage extends StatefulWidget {
-  const SubtitleHomePage({required this.core, this.videoPicker, super.key});
+  const SubtitleHomePage({
+    required this.core,
+    this.videoPicker,
+    this.videoFolderOpener,
+    super.key,
+  });
 
   final SubtitleCore core;
   final VideoNamePicker? videoPicker;
+  final VideoFolderOpener? videoFolderOpener;
 
   @override
   State<SubtitleHomePage> createState() => _SubtitleHomePageState();
@@ -42,8 +53,20 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
   Future<void> _pickVideo() async {
     final name = await (widget.videoPicker ?? pickVideoName)();
     if (!mounted || name == null || name.trim().isEmpty) return;
-    videoController.text = name;
+    videoController.text = _videoDisplayName(name);
     controller.selectVideo(name);
+  }
+
+  static String _videoDisplayName(String path) =>
+      path.trim().replaceAll('\\', '/').split('/').last;
+
+  Future<void> _openVideoFolder() async {
+    final path = controller.savedVideoPath;
+    if (path == null || !_hasDirectorySeparator(path)) return;
+    final opened = await (widget.videoFolderOpener ?? openVideoFolder)(path);
+    if (!mounted || opened) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('无法打开视频文件夹')));
   }
 
   @override
@@ -87,20 +110,18 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
         autofocus: true,
         child: Scaffold(
           appBar: AppBar(
-            title: const Row(
+            toolbarHeight: 76,
+            title: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.subtitles_rounded),
-                SizedBox(width: AppSpacing.xs),
-                Text('SSSubtitle'),
+                Text(
+                  'SSSubtitle',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                Text('字幕工作台', style: Theme.of(context).textTheme.labelMedium),
               ],
             ),
-            actions: const [
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                child: Center(child: Text('跨平台字幕助手')),
-              ),
-            ],
           ),
           body: SafeArea(
             child: LayoutBuilder(
@@ -111,7 +132,14 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
                     constraints: const BoxConstraints(maxWidth: 1440),
                     child: Padding(
                       padding: const EdgeInsets.all(AppSpacing.md),
-                      child: wide ? _wideLayout() : _compactLayout(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: wide ? _wideLayout() : _compactLayout(),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -142,7 +170,12 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
                 child: _CandidatePanel(controller: controller),
               ),
               const SizedBox(width: AppSpacing.md),
-              Expanded(child: _PreviewPanel(controller: controller)),
+              Expanded(
+                child: _PreviewPanel(
+                  controller: controller,
+                  onOpenVideoFolder: _openVideoFolder,
+                ),
+              ),
             ],
           ),
         ),
@@ -161,9 +194,15 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
           onPickVideo: _pickVideo,
         ),
         const SizedBox(height: AppSpacing.md),
-        SizedBox(height: 330, child: _CandidatePanel(controller: controller)),
+        SizedBox(height: 300, child: _CandidatePanel(controller: controller)),
         const SizedBox(height: AppSpacing.md),
-        SizedBox(height: 480, child: _PreviewPanel(controller: controller)),
+        SizedBox(
+          height: 480,
+          child: _PreviewPanel(
+            controller: controller,
+            onOpenVideoFolder: _openVideoFolder,
+          ),
+        ),
       ],
     );
   }
@@ -190,100 +229,86 @@ class _SearchCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('从视频开始', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '选择本地视频后，只把可编辑的搜索名称发送给字幕服务，不上传视频内容。',
-              style: Theme.of(context).textTheme.bodyMedium,
+            Row(
+              children: [
+                M3EContainer.pill(
+                  height: 32,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                    ),
+                    child: Text(
+                      '01',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text('从视频开始', style: Theme.of(context).textTheme.titleLarge),
+              ],
             ),
             const SizedBox(height: AppSpacing.md),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 680;
-                final field = TextField(
-                  key: const Key('video-name-field'),
-                  controller: videoController,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: '视频文件名',
-                    hintText: '例如 documentary_episode.mp4',
-                    prefixIcon: Icon(Icons.movie_outlined),
-                  ),
-                  onSubmitted: controller.selectVideo,
-                );
-                final button = FilledButton.icon(
-                  key: const Key('select-video-button'),
-                  onPressed: onPickVideo,
-                  icon: const Icon(Icons.video_file_outlined),
-                  label: const Text('选择视频'),
-                );
-                return narrow
-                    ? Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          field,
-                          const SizedBox(height: AppSpacing.sm),
-                          button,
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          Expanded(child: field),
-                          const SizedBox(width: AppSpacing.sm),
-                          button,
-                        ],
-                      );
-              },
+            SizedBox(
+              height: 56,
+              child: TextField(
+                key: Key('video-name-field'),
+                controller: videoController,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: '视频文件名',
+                  hintText: '例如 documentary_episode.mp4',
+                  prefixIcon: Icon(Icons.movie_outlined),
+                ),
+                onSubmitted: controller.selectVideo,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Align(
+              alignment: Alignment.centerRight,
+              child: M3EFilledButton.icon(
+                key: const Key('select-video-button'),
+                onPressed: onPickVideo,
+                icon: const Icon(Icons.video_file_outlined),
+                label: const Text('选择视频'),
+                size: M3EButtonSize.xs,
+                decoration: const M3EButtonDecoration(
+                  haptic: M3EHapticFeedback.light,
+                ),
+              ),
             ),
             if (controller.videoName.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.md),
-              Semantics(
-                liveRegion: true,
-                label: '自动候选搜索名 ${controller.suggestedQuery}',
-                child: Text(
-                  '自动候选名：${controller.suggestedQuery}',
-                  style: Theme.of(context).textTheme.labelLarge,
+              SizedBox(
+                height: 56,
+                child: TextField(
+                  key: Key('query-field'),
+                  controller: queryController,
+                  decoration: InputDecoration(
+                    labelText: '搜索名称（可修改）',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
+                  onChanged: controller.setQuery,
+                  onSubmitted: (_) => controller.search(),
                 ),
               ),
-              const SizedBox(height: AppSpacing.xs),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final narrow = constraints.maxWidth < 680;
-                  final field = TextField(
-                    key: const Key('query-field'),
-                    controller: queryController,
-                    decoration: const InputDecoration(
-                      labelText: '搜索名称（可修改）',
-                      prefixIcon: Icon(Icons.search_rounded),
-                    ),
-                    onChanged: controller.setQuery,
-                    onSubmitted: (_) => controller.search(),
-                  );
-                  final button = FilledButton.icon(
-                    key: const Key('search-button'),
-                    onPressed: controller.status == SearchStatus.loading
-                        ? null
-                        : controller.search,
-                    icon: const Icon(Icons.travel_explore_rounded),
-                    label: const Text('搜索字幕'),
-                  );
-                  return narrow
-                      ? Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            field,
-                            const SizedBox(height: AppSpacing.sm),
-                            button,
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(child: field),
-                            const SizedBox(width: AppSpacing.sm),
-                            button,
-                          ],
-                        );
-                },
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: M3EFilledButton.icon(
+                  key: const Key('search-button'),
+                  onPressed: controller.status == SearchStatus.loading
+                      ? null
+                      : controller.search,
+                  icon: const Icon(Icons.travel_explore_rounded),
+                  label: const Text('搜索字幕'),
+                  size: M3EButtonSize.xs,
+                  decoration: const M3EButtonDecoration(
+                    haptic: M3EHapticFeedback.medium,
+                  ),
+                ),
               ),
             ],
           ],
@@ -291,6 +316,20 @@ class _SearchCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// Production ranking uses a weighted 0–1680 score, while the demo core already
+// supplies a 0–100 value. Keep the conversion in presentation code so the
+// domain score remains available for ordering and diagnostics.
+const _maxWeightedMatchScore = 1680;
+
+int _matchPercentage(int score) {
+  if (score <= 100) return score.clamp(0, 100).toInt();
+  final bounded = score.clamp(0, _maxWeightedMatchScore);
+  return ((bounded * 100) / _maxWeightedMatchScore)
+      .round()
+      .clamp(0, 100)
+      .toInt();
 }
 
 class _CandidatePanel extends StatelessWidget {
@@ -355,66 +394,105 @@ class _CandidatePanel extends StatelessWidget {
           message: controller.errorMessage ?? '未知错误',
         );
       case SearchStatus.ready:
-        return ListView.separated(
+        final scheme = Theme.of(context).colorScheme;
+        return M3ECardList.builder(
           key: const Key('candidate-list'),
           itemCount: controller.candidates.length,
-          separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.xs),
           itemBuilder: (context, index) {
             final item = controller.candidates[index];
             final selected = index == controller.selectedIndex;
             return Semantics(
+              key: Key('candidate-$index'),
               selected: selected,
-              button: true,
-              label: '${item.name}，匹配分 ${item.matchScore}',
-              child: Card(
-                color: selected
-                    ? Theme.of(context).colorScheme.secondaryContainer
-                    : Theme.of(context).colorScheme.surfaceContainerLow,
-                child: InkWell(
-                  key: Key('candidate-$index'),
-                  borderRadius: BorderRadius.circular(AppSpacing.md),
-                  onTap: () => controller.selectCandidate(index),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.sm),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.titleSmall,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xxs),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    M3EContainer.pill(
+                      width: 62,
+                      height: 36,
+                      color: selected
+                          ? scheme.secondary
+                          : scheme.secondaryContainer,
+                      child: Center(
+                        child: Text(
+                          '${_matchPercentage(item.matchScore)}%',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: selected
+                                    ? scheme.onSecondary
+                                    : scheme.onSecondaryContainer,
                               ),
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Chip(label: Text('${item.matchScore} 分')),
-                          ],
                         ),
-                        Text('${item.languages.join(' / ')} · ${item.format}'),
-                        const SizedBox(height: AppSpacing.xxs),
-                        Text(
-                          item.matchReasons.join(' · '),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          if (item.languages.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xxs),
+                            Text(
+                              item.languages.join(' / '),
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                          if (item.matchReasons.isNotEmpty) ...[
+                            const SizedBox(height: AppSpacing.xxs),
+                            Text(
+                              item.matchReasons.join(' · '),
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (selected) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.check_circle_rounded,
+                        color: scheme.primary,
+                        semanticLabel: '已选择',
+                      ),
+                    ],
+                  ],
                 ),
               ),
             );
           },
+          onTap: (index) {
+            controller.selectCandidate(index);
+          },
+          semanticLabelBuilder: (index) {
+            final item = controller.candidates[index];
+            return '${item.name}，匹配度 ${_matchPercentage(item.matchScore)}%';
+          },
+          color: scheme.surfaceContainerHigh,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          gap: AppSpacing.xs,
+          haptic: M3EHapticFeedback.light,
+          listPadding: EdgeInsets.zero,
         );
     }
   }
 }
 
 class _PreviewPanel extends StatelessWidget {
-  const _PreviewPanel({required this.controller});
+  const _PreviewPanel({
+    required this.controller,
+    required this.onOpenVideoFolder,
+  });
 
   final SubtitleController controller;
+  final Future<void> Function() onOpenVideoFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -451,10 +529,29 @@ class _PreviewPanel extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
+            if (controller.previewPageCount > 0) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Semantics(
+                label:
+                    '预览进度 ${(controller.previewPage + 1)}/${controller.previewPageCount}',
+                child: M3ELinearProgressIndicator(
+                  value:
+                      (controller.previewPage + 1) /
+                      controller.previewPageCount,
+                  minHeight: 6,
+                  backgroundColor: Theme.of(context)
+                      .colorScheme
+                      .surfaceContainerHighest,
+                ),
+              ),
+            ],
             const SizedBox(height: AppSpacing.sm),
             Expanded(child: _previewBody(context)),
             const SizedBox(height: AppSpacing.sm),
-            _PreviewControls(controller: controller),
+            _PreviewControls(
+              controller: controller,
+              onOpenVideoFolder: onOpenVideoFolder,
+            ),
             if (controller.notice != null) ...[
               const SizedBox(height: AppSpacing.xs),
               Semantics(
@@ -490,7 +587,7 @@ class _PreviewPanel extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.inverseSurface,
-        borderRadius: BorderRadius.circular(AppSpacing.sm),
+        borderRadius: BorderRadius.circular(AppRadii.reading),
       ),
       child: Semantics(
         label: '字幕文本，每页 30 行',
@@ -502,10 +599,11 @@ class _PreviewPanel extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
             child: Text(
               controller.visiblePreviewLines[index],
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onInverseSurface,
-                fontFamily: 'monospace',
-                height: 1.35,
+              style: GoogleFonts.jetBrainsMono(
+                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onInverseSurface,
+                  height: 1.35,
+                ),
               ),
             ),
           ),
@@ -516,64 +614,86 @@ class _PreviewPanel extends StatelessWidget {
 }
 
 class _PreviewControls extends StatelessWidget {
-  const _PreviewControls({required this.controller});
+  const _PreviewControls({
+    required this.controller,
+    required this.onOpenVideoFolder,
+  });
 
   final SubtitleController controller;
+  final Future<void> Function() onOpenVideoFolder;
 
   @override
   Widget build(BuildContext context) {
     final hasCandidate = controller.selectedCandidate != null;
-    return Wrap(
-      spacing: AppSpacing.xs,
-      runSpacing: AppSpacing.xs,
-      alignment: WrapAlignment.center,
-      children: [
-        IconButton.outlined(
-          key: const Key('previous-preview-page'),
-          tooltip: '上一页（←）',
-          onPressed: controller.previewPage > 0
-              ? controller.previousPreviewPage
-              : null,
-          icon: const Icon(Icons.chevron_left_rounded),
-        ),
-        IconButton.outlined(
-          key: const Key('next-preview-page'),
-          tooltip: '下一页（→）',
-          onPressed: controller.previewPage + 1 < controller.previewPageCount
-              ? controller.nextPreviewPage
-              : null,
-          icon: const Icon(Icons.chevron_right_rounded),
-        ),
-        Tooltip(
-          message: '保存到原视频所在目录，播放器即可按同名规则自动识别',
-          child: FilledButton.icon(
-            key: const Key('download-button'),
-            onPressed: hasCandidate && !controller.downloading
-                ? controller.downloadSelected
+    final savedVideoPath = controller.savedVideoPath;
+    final canOpenVideoFolder =
+        savedVideoPath != null && _hasDirectorySeparator(savedVideoPath);
+    return Center(
+      child: Wrap(
+        spacing: AppSpacing.xs,
+        runSpacing: AppSpacing.xs,
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          M3EOutlinedButton(
+            key: const Key('previous-preview-page'),
+            tooltip: '上一页（←）',
+            onPressed: controller.previewPage > 0
+                ? controller.previousPreviewPage
                 : null,
-            icon: controller.downloading
-                ? const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_alt_rounded),
-            label: Text(controller.downloading ? '准备保存' : '另存字幕'),
+            size: M3EButtonSize.xs,
+            child: const Icon(Icons.chevron_left_rounded),
           ),
-        ),
-        OutlinedButton.icon(
-          key: const Key('cancel-button'),
-          onPressed: hasCandidate ? controller.cancel : null,
-          icon: const Icon(Icons.close_rounded),
-          label: const Text('取消'),
-        ),
-        Tooltip(
-          message: '↑↓ 切换候选 · ←→ 预览翻页 · Home/End 首尾 · PageUp/PageDown 快选 · Enter 另存 · Esc 取消',
-          child: const IconButton(
-            onPressed: null,
-            icon: Icon(Icons.keyboard_alt_outlined),
+          M3EOutlinedButton(
+            key: const Key('next-preview-page'),
+            tooltip: '下一页（→）',
+            onPressed: controller.previewPage + 1 < controller.previewPageCount
+                ? controller.nextPreviewPage
+                : null,
+            size: M3EButtonSize.xs,
+            child: const Icon(Icons.chevron_right_rounded),
           ),
-        ),
-      ],
+          Tooltip(
+            message: '保存字幕',
+            child: M3EFilledButton.icon(
+              key: const Key('download-button'),
+              onPressed: hasCandidate && !controller.downloading
+                  ? controller.downloadSelected
+                  : null,
+              icon: controller.downloading
+                  ? const M3ECircularProgressIndicator(size: 20, strokeWidth: 2)
+                  : const Icon(Icons.save_alt_rounded),
+              label: Text(controller.downloading ? '保存中' : '保存字幕'),
+              size: M3EButtonSize.md,
+              decoration: const M3EButtonDecoration(
+                haptic: M3EHapticFeedback.heavy,
+              ),
+            ),
+          ),
+          if (canOpenVideoFolder)
+            M3EOutlinedButton.icon(
+              key: const Key('open-video-folder-button'),
+              onPressed: onOpenVideoFolder,
+              icon: const Icon(Icons.folder_open_rounded),
+              label: const Text('打开视频文件夹'),
+              size: M3EButtonSize.sm,
+            ),
+          M3EOutlinedButton.icon(
+            key: const Key('cancel-button'),
+            onPressed: hasCandidate ? controller.cancel : null,
+            icon: const Icon(Icons.close_rounded),
+            label: const Text('取消'),
+            size: M3EButtonSize.sm,
+          ),
+          Tooltip(
+            message: '↑↓ 切换候选 · ←→ 预览翻页 · Home/End 首尾 · PageUp/PageDown 快选 · Enter 保存 · Esc 取消',
+            child: const IconButton(
+              onPressed: null,
+              icon: Icon(Icons.keyboard_alt_outlined),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -593,6 +713,7 @@ class _MessageState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Semantics(
       liveRegion: loading,
       label: '$title。$message',
@@ -604,12 +725,22 @@ class _MessageState extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (loading)
-                  const CircularProgressIndicator()
+                  const M3EContainedLoadingIndicator(
+                    width: 72,
+                    height: 72,
+                    padding: EdgeInsets.all(AppSpacing.xs),
+                    semanticsLabel: '正在处理',
+                  )
                 else
-                  Icon(
-                    icon,
-                    size: AppSpacing.xl,
-                    color: Theme.of(context).colorScheme.primary,
+                  M3EContainer.circle(
+                    width: 56,
+                    height: 56,
+                    color: scheme.primaryContainer,
+                    child: Icon(
+                      icon,
+                      size: 28,
+                      color: scheme.onPrimaryContainer,
+                    ),
                   ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(title, style: Theme.of(context).textTheme.titleMedium),

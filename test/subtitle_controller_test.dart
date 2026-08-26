@@ -316,6 +316,7 @@ void main() {
     await controller.downloadSelected();
 
     expect(controller.notice, '字幕已保存为 episode.srt');
+    expect(controller.savedVideoPath, 'episode.mkv');
   });
 
   test('Cancelled platform save reports cancellation', () async {

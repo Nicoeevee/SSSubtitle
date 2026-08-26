@@ -22,6 +22,7 @@ class SubtitleController extends ChangeNotifier {
   int previewPage = 0;
   bool previewLoading = false;
   bool downloading = false;
+  String? savedVideoPath;
 
   int _totalPreviewPages = 0;
   int _searchGeneration = 0;
@@ -46,6 +47,7 @@ class SubtitleController extends ChangeNotifier {
     selectedIndex = 0;
     _clearPreview();
     downloading = false;
+    savedVideoPath = null;
     notice = null;
     errorMessage = null;
     notifyListeners();
@@ -70,6 +72,7 @@ class SubtitleController extends ChangeNotifier {
     status = SearchStatus.loading;
     errorMessage = null;
     notice = null;
+    savedVideoPath = null;
     candidates = const [];
     selectedIndex = 0;
     _clearPreview();
@@ -112,6 +115,7 @@ class SubtitleController extends ChangeNotifier {
     if (target == selectedIndex && previewLines.isNotEmpty) return;
     selectedIndex = target;
     notice = null;
+    savedVideoPath = null;
     _clearPreview();
     notifyListeners();
     final candidate = selectedCandidate;
@@ -168,8 +172,10 @@ class SubtitleController extends ChangeNotifier {
         return;
       }
       notice = switch (outcome) {
-        SubtitleSaveOutcome.saved =>
-          '字幕已保存为 ${deriveSubtitleBaseName(videoName)}.${candidate.format.toLowerCase()}',
+        SubtitleSaveOutcome.saved => () {
+          savedVideoPath = videoName;
+          return '字幕已保存为 ${deriveSubtitleBaseName(videoName)}.${candidate.format.toLowerCase()}';
+        }(),
         SubtitleSaveOutcome.cancelled => '已取消保存',
       };
     } on SubtitleCoreException catch (error) {
@@ -201,6 +207,7 @@ class SubtitleController extends ChangeNotifier {
     selectedIndex = 0;
     _clearPreview();
     downloading = false;
+    savedVideoPath = null;
     notice = '已取消当前选择';
     errorMessage = null;
     notifyListeners();

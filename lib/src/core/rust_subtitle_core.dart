@@ -112,6 +112,7 @@ class RustSubtitleCore implements SubtitleCore {
       final extension = artifact.format.name;
       final saved = await _saver.save(
         baseName: deriveSubtitleBaseName(videoFileName),
+        sourceVideoPath: videoFileName,
         bytes: artifact.bytes,
         extension: extension,
         mimeType: _mimeType(extension),

@@ -36,7 +36,7 @@ flutter run -d chrome `
 
 1. 选择一个视频文件。
 2. 确认或修改自动生成的搜索名。
-3. 选择候选字幕并在右侧分页预览。
+3. 选择候选字幕，并在候选/预览区域分页预览。
 4. 保存字幕。默认文件名沿用原视频的完整基名，仅替换扩展名，便于播放器自动索引。
 
 完整快捷键、格式支持、隐私说明和当前功能边界见[用户指南](docs/user-guide.md)。
@@ -45,6 +45,8 @@ flutter run -d chrome `
 
 - [用户指南](docs/user-guide.md)：完整操作、快捷键、格式、隐私与限制
 - [开发指南](docs/development.md)：环境、代码生成、测试、Windows/Web 构建与部署
+- [UI/UX Pro Max 设计系统](design-system/sssubtitle/MASTER.md)：Material 3 桌面字幕工具的颜色、字体、间距和交互规则
+- [m3e_core 研究笔记](docs/agents/m3e-core-research.md)：Material 3 Expressive API 选型、集成边界与跨平台验收
 - [架构决策](docs/adr/0001-flutter-platform-shell-rust-subtitle-core.md)：Flutter 与 Rust 的职责边界
 - [Liquid Glass 任务计划](docs/agents/liquid-glass-easy-plan.md)：`liquid_glass_easy` 的分阶段迁移任务与验收边界
 - [ADR-0003：Liquid Glass presentation layer](docs/adr/0003-liquid-glass-presentation-layer.md)：Glass 包装边界、Material 保留范围与实验验收记录

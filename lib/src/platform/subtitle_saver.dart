@@ -19,7 +19,7 @@ typedef FallbackSubtitleSaver = Future<bool> Function({
   required String mimeType,
 });
 
-/// Hands a subtitle artifact to the platform without exposing save paths to UI.
+/// Hands a subtitle artifact to the platform and chooses its save location.
 class PlatformSubtitleSaver {
   PlatformSubtitleSaver({
     TargetPlatform? platform,
@@ -45,13 +45,16 @@ class PlatformSubtitleSaver {
     required String extension,
     required Uint8List bytes,
     required String mimeType,
+    String? sourceVideoPath,
   }) async {
     if (!_isWeb && _platform == TargetPlatform.windows) {
       final name = '$baseName.$extension';
-      final path = await _windowsLocationPicker(
-        suggestedName: name,
-        extension: extension,
-      );
+      final path =
+          _subtitlePathBesideVideo(sourceVideoPath ?? '', name) ??
+          await _windowsLocationPicker(
+            suggestedName: name,
+            extension: extension,
+          );
       if (path == null) return false;
       await _bytesWriter(
         path: path,
@@ -68,6 +71,20 @@ class PlatformSubtitleSaver {
       bytes: bytes,
       mimeType: mimeType,
     );
+  }
+
+  /// Returns the subtitle path next to a selected video file.
+  ///
+  /// The picker returns an absolute path on native Windows. Keeping this
+  /// small path operation here lets the save flow avoid reopening a save
+  /// dialog while retaining the dialog as a backwards-compatible fallback
+  /// for manually entered video names.
+  static String? _subtitlePathBesideVideo(String sourceVideoPath, String name) {
+    final normalized = sourceVideoPath.trim();
+    if (normalized.isEmpty) return null;
+    final separatorIndex = normalized.lastIndexOf(RegExp(r'[\\/]'));
+    if (separatorIndex < 0) return null;
+    return '${normalized.substring(0, separatorIndex + 1)}$name';
   }
 
   static Future<String?> _pickWindowsSaveLocation({

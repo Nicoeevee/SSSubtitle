@@ -3,6 +3,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ss_subtitle/src/platform/subtitle_saver.dart';
 
 void main() {
+  test(
+    'Windows saves beside the selected video without a save dialog',
+    () async {
+      var pickerCalled = false;
+      String? writtenPath;
+      final saver = PlatformSubtitleSaver(
+        platform: TargetPlatform.windows,
+        isWeb: false,
+        windowsLocationPicker:
+            ({required String suggestedName, required String extension}) async {
+              pickerCalled = true;
+              return null;
+            },
+        bytesWriter:
+            ({
+              required String path,
+              required String name,
+              required Uint8List bytes,
+              required String mimeType,
+            }) async {
+              writtenPath = path;
+            },
+      );
+
+      final saved = await saver.save(
+        baseName: 'documentary_episode',
+        extension: 'srt',
+        sourceVideoPath: r'C:\Media\documentary_episode.mp4',
+        bytes: Uint8List.fromList([1, 2, 3]),
+        mimeType: 'application/x-subrip',
+      );
+
+      expect(saved, isTrue);
+      expect(pickerCalled, isFalse);
+      expect(writtenPath, r'C:\Media\documentary_episode.srt');
+    },
+  );
+
   test('Windows 使用 file_selector 另存且不调用 file_saver', () async {
     String? capturedSuggestedName;
     String? selectedPath;

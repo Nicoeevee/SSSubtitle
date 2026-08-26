@@ -1,10 +1,28 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:m3e_core/m3e_core.dart';
 import 'package:ss_subtitle/app.dart';
 import 'package:ss_subtitle/src/core/subtitle_core.dart';
+import 'package:ss_subtitle/src/theme/app_theme.dart';
 
 void main() {
+  test('AppTheme binds the bundled Noto Sans SC theme font', () async {
+    GoogleFonts.config.allowRuntimeFetching = false;
+    final textThemes = <TextTheme>[
+      AppTheme.light.textTheme,
+      AppTheme.dark.textTheme,
+    ];
+
+    await GoogleFonts.pendingFonts();
+
+    for (final textTheme in textThemes) {
+      expect(textTheme.bodyMedium?.fontFamily, 'NotoSansSC_500');
+      expect(textTheme.bodyMedium?.fontFamilyFallback, contains('NotoSansSC'));
+    }
+  });
+
   testWidgets('compact layout searches, previews, and requests another page', (
     tester,
   ) async {
@@ -20,26 +38,74 @@ void main() {
       ),
     );
     expect(find.text('等待搜索'), findsOneWidget);
+    final selectButton = find.byKey(const Key('select-video-button'));
+    expect(tester.widget<M3EFilledButton>(selectButton).size, M3EButtonSize.xs);
+    expect(
+      tester.getTopLeft(selectButton).dy,
+      greaterThan(
+        tester.getBottomLeft(find.byKey(const Key('video-name-field'))).dy,
+      ),
+    );
+    expect(
+      tester.getSize(selectButton).height,
+      lessThan(
+        tester.getSize(find.byKey(const Key('video-name-field'))).height,
+      ),
+    );
+    expect(find.text('找到属于这部视频的字幕'), findsNothing);
+    expect(find.text('选择视频、确认搜索名，再预览并保存匹配的 Subtitle Artifact。'), findsNothing);
+    expect(find.text('选择本地视频后，只把可编辑的搜索名称发送给字幕服务，不上传视频内容。'), findsNothing);
+    expect(find.text('跨平台字幕助手 · 不上传视频'), findsNothing);
+    expect(
+      find.ancestor(
+        of: find.byIcon(Icons.manage_search_rounded),
+        matching: find.byType(M3EContainer),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(
+        of: find.byIcon(Icons.closed_caption_off_outlined),
+        matching: find.byType(M3EContainer),
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const Key('select-video-button')));
     await tester.pump();
-    expect(find.text('自动候选名：documentary_episode'), findsOneWidget);
+    expect(find.textContaining('自动候选名'), findsNothing);
+    final queryField = tester.widget<TextField>(
+      find.byKey(const Key('query-field')),
+    );
+    expect(queryField.controller?.text, 'documentary_episode');
+    final searchButton = find.byKey(const Key('search-button'));
+    expect(tester.widget<M3EFilledButton>(searchButton).size, M3EButtonSize.xs);
+    expect(
+      tester.getTopLeft(searchButton).dy,
+      greaterThan(
+        tester.getBottomLeft(find.byKey(const Key('query-field'))).dy,
+      ),
+    );
+    expect(
+      tester.getSize(searchButton).height,
+      lessThan(tester.getSize(find.byKey(const Key('query-field'))).height),
+    );
 
     await tester.tap(find.byKey(const Key('search-button')));
     await tester.pump();
     await tester.pump();
 
     expect(find.text('documentary_episode 中文字幕.srt'), findsWidgets);
+    expect(find.text('96%'), findsOneWidget);
+    expect(find.text('88%'), findsOneWidget);
+    expect(find.textContaining('· SRT'), findsNothing);
     expect(find.text('第 1/2 页'), findsOneWidget);
     expect(find.text('第 1 行'), findsOneWidget);
 
-    final nextPage = find.byKey(const Key('next-preview-page'));
-    await tester.drag(
-      find.byKey(const Key('compact-scroll')),
-      const Offset(0, -700),
-    );
-    await tester.pump();
-    await tester.tap(nextPage);
+    final previewLine = tester.widget<Text>(find.text('第 1 行'));
+    expect(previewLine.style?.fontFamily, 'JetBrainsMono_500');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.pump();
     expect(find.text('第 2/2 页'), findsOneWidget);
@@ -52,10 +118,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    String? openedPath;
     await tester.pumpWidget(
       SSSubtitleApp(
         core: _WidgetCore(),
-        videoPicker: () async => 'archive.example@documentary_episode.mp4',
+        videoPicker: () async =>
+            r'C:\Media\archive.example@documentary_episode.mp4',
+        videoFolderOpener: (path) async {
+          openedPath = path;
+          return true;
+        },
       ),
     );
     await tester.tap(find.byKey(const Key('select-video-button')));
@@ -75,6 +147,10 @@ void main() {
       find.text('字幕已保存为 archive.example@documentary_episode.ass'),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('open-video-folder-button')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('open-video-folder-button')));
+    await tester.pump();
+    expect(openedPath, r'C:\Media\archive.example@documentary_episode.mp4');
   });
 }
 

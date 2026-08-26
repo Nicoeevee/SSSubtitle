@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -42,7 +43,7 @@ void main() {
     expect(tester.widget<M3EFilledButton>(selectButton).size, M3EButtonSize.xs);
     expect(
       tester.getTopLeft(selectButton).dy,
-      greaterThan(
+      lessThanOrEqualTo(
         tester.getBottomLeft(find.byKey(const Key('video-name-field'))).dy,
       ),
     );
@@ -52,6 +53,12 @@ void main() {
         tester.getSize(find.byKey(const Key('video-name-field'))).height,
       ),
     );
+    expect(tester.getSize(find.byType(Card).first).height, lessThan(220));
+    final selectionSemantics = tester.widget<Semantics>(
+      find.byKey(const Key('video-selection-semantics')),
+    );
+    expect(selectionSemantics.properties.label, '视频文件选择区域');
+    expect(selectionSemantics.properties.hint, contains('拖拽视频文件'));
     expect(find.text('找到属于这部视频的字幕'), findsNothing);
     expect(find.text('选择视频、确认搜索名，再预览并保存匹配的 Subtitle Artifact。'), findsNothing);
     expect(find.text('选择本地视频后，只把可编辑的搜索名称发送给字幕服务，不上传视频内容。'), findsNothing);
@@ -82,7 +89,7 @@ void main() {
     expect(tester.widget<M3EFilledButton>(searchButton).size, M3EButtonSize.xs);
     expect(
       tester.getTopLeft(searchButton).dy,
-      greaterThan(
+      lessThanOrEqualTo(
         tester.getBottomLeft(find.byKey(const Key('query-field'))).dy,
       ),
     );
@@ -112,6 +119,85 @@ void main() {
     await tester.pump();
     expect(find.text('第 2/2 页'), findsOneWidget);
     expect(find.text('第 31 行'), findsOneWidget);
+  });
+
+  testWidgets('narrow window stacks file and search actions without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(420, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      SSSubtitleApp(
+        core: _WidgetCore(),
+        videoPicker: () async => 'documentary_episode.mp4',
+      ),
+    );
+
+    final selectButton = find.byKey(const Key('select-video-button'));
+    final videoField = find.byKey(const Key('video-name-field'));
+    expect(
+      tester.getTopLeft(selectButton).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(videoField).dy),
+    );
+    final selectionSemantics = tester.widget<Semantics>(
+      find.byKey(const Key('video-selection-semantics')),
+    );
+    expect(selectionSemantics.properties.label, '视频文件选择区域');
+    expect(selectionSemantics.properties.hint, contains('拖拽视频文件'));
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(selectButton);
+    await tester.pump();
+
+    final searchButton = find.byKey(const Key('search-button'));
+    final queryField = find.byKey(const Key('query-field'));
+    expect(
+      tester.getTopLeft(searchButton).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(queryField).dy),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dropped video selects its name and prepares the search block', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(SSSubtitleApp(core: _WidgetCore()));
+
+    final dropTarget = tester.widget<DropTarget>(
+      find.byKey(const Key('video-drop-target')),
+    );
+    dropTarget.onDragDone?.call(
+      DropDoneDetails(
+        files: [DropItemFile(r'C:\Media\documentary_episode.mp4')],
+        localPosition: Offset.zero,
+        globalPosition: Offset.zero,
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('video-name-field')))
+          .controller
+          ?.text,
+      'documentary_episode.mp4',
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('query-field')))
+          .controller
+          ?.text,
+      'documentary_episode',
+    );
+    expect(find.byKey(const Key('search-button')), findsOneWidget);
   });
 
   testWidgets('preview page slider requests one discrete target page', (

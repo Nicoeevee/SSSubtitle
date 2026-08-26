@@ -3,9 +3,35 @@ import 'package:file_selector/file_selector.dart';
 
 typedef VideoNamePicker = Future<String?> Function();
 
+/// Extensions accepted by both the native picker and the drop target.
+const supportedVideoExtensions = <String>[
+  'mp4',
+  'mkv',
+  'avi',
+  'mov',
+  'wmv',
+  'm4v',
+  'ts',
+  'webm',
+];
+
+bool isSupportedVideoFileName(String value) {
+  final normalized = value.trim().replaceAll('\\', '/');
+  final basename = normalized.split('/').last;
+  final queryStart = basename.indexOf('?');
+  final withoutQuery = queryStart < 0
+      ? basename
+      : basename.substring(0, queryStart);
+  final dot = withoutQuery.lastIndexOf('.');
+  if (dot < 0 || dot == withoutQuery.length - 1) return false;
+  return supportedVideoExtensions.contains(
+    withoutQuery.substring(dot + 1).toLowerCase(),
+  );
+}
+
 const _videoTypes = XTypeGroup(
   label: '视频文件',
-  extensions: ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'm4v', 'ts', 'webm'],
+  extensions: supportedVideoExtensions,
 );
 
 Future<String?> pickVideoName() async {

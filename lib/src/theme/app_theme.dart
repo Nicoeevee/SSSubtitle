@@ -102,7 +102,6 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        titleSpacing: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,

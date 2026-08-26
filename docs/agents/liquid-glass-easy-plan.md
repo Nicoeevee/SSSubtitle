@@ -60,6 +60,12 @@ graph TD
 - Light/Dark、宽屏/紧凑窗口、窗口缩放、候选滚动、字幕正文滚动、搜索 loading 和保存 loading。
 - 选择视频、编辑 Suggested Search Name、搜索、选择 Subtitle Candidate、分页浏览 Subtitle Preview、Acquisition、取消、错误/空结果以及全部既有键盘快捷键。
 
+## 实验记录（2026-08-26）
+
+一次独立 worktree 原型验证了 `liquid_glass_easy: 4.1.1` 的 API 和固定背景捕获路径，随后该 worktree 被移除，原型代码没有合并到 `main`。原型确认以下方向可行：使用单一 `LiquidGlassView` 包住完整 `Scaffold` 和固定程序化 Mesh Gradient；通过应用自有 `AppGlass*` wrapper 统一 Lens/style/token；把 TextField、候选列表与 Chip、字幕正文和高频滚动内容留在 Material 3；将 Noto Sans SC 静态资源与 OFL 许可证打包并关闭 Google Fonts runtime fetching。
+
+原型的发布门禁结果与截图见[开发指南的实验记录](../development.md#liquid-glass-实验记录)及 [CanvasKit Web Glass 验收截图](../validation/liquid-glass-web-2026-08-26.png)。Windows Release、FRB Web Release、Flutter Web Release 和带 COOP/COEP 的本地服务均已验证；Web 页面通过 Chrome DevTools Protocol 确认 CanvasKit 首帧。Windows 的 Impeller 日志已取得，但桌面窗口截图、Light/Dark、缩放、滚动、loading、全流程交互和性能记录仍未完成，因此 Issues #1–#6 的验收状态不因本次实验自动关闭。
+
 ## 设计决策记录
 
 - Glass 是视觉表面层，不是新的字幕业务框架。

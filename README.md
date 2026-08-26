@@ -47,6 +47,6 @@ flutter run -d chrome `
 - [开发指南](docs/development.md)：环境、代码生成、测试、Windows/Web 构建与部署
 - [架构决策](docs/adr/0001-flutter-platform-shell-rust-subtitle-core.md)：Flutter 与 Rust 的职责边界
 - [Liquid Glass 任务计划](docs/agents/liquid-glass-easy-plan.md)：`liquid_glass_easy` 的分阶段迁移任务与验收边界
+- [ADR-0003：Liquid Glass presentation layer](docs/adr/0003-liquid-glass-presentation-layer.md)：Glass 包装边界、Material 保留范围与实验验收记录
 - [领域词汇](CONTEXT.md)：项目使用的核心术语
 - [GitHub Issues](https://github.com/Nicoeevee/SSSubtitle/issues)：需求、缺陷与进度
-

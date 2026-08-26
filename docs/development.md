@@ -21,6 +21,21 @@ FRB 的 Dart runtime、Rust runtime、codegen 与 macros 必须保持同一版�
 
 `rust_builder/cargokit` 来自 FRB 2.13 固定的 Cargokit 提交 `6f7144d192b04075acd73af2656cdebb1d3e4055`，并同步当前 Dart 构建依赖、格式以及上游测试和文档。它是项目内维护的 vendored 构建组件，不应被其他版本的 Cargokit 文件局部覆盖。
 
+## Liquid Glass 实验记录
+
+2026-08-26 在独立 worktree 中验证了 `liquid_glass_easy: 4.1.1` 的 presentation-layer 方案。该 worktree 的实验代码不并入 `main`；本节只保留可复用的 API、渲染和验收结论，不能视为 GitHub Issues #1–#6 已完成。
+
+- 官方 4.1.1 API 使用 `LiquidGlassLens`、`LiquidGlassStyle` 与 `LiquidGlassView`；Skia/Web 需要祖先 `LiquidGlassView(backgroundWidget: ...)` 才能捕获背景，Impeller 不需要该 View。直接 package import 应继续限制在应用自有的 Glass wrapper/theme 边界。
+- 最稳的页面结构是固定的 Mesh Gradient 作为捕获背景，完整 `Scaffold` 位于单一 Glass view 内；App Shell、固定的搜索/候选/预览面板和少量操作控件使用 Glass，TextField、候选列表项、Chip、字幕正文及高频滚动内容保留 Material 3。
+- 背景可用固定的程序化 Mesh Gradient 取代图片资源，避免网络请求和图片授权风险。中文字体实验使用 Google Fonts 的 Noto Sans SC，并离线打包 Regular、Medium、SemiBold、Bold 与 OFL 许可证；生产入口关闭 runtime fetching，Windows/Web 启动不依赖 Google CDN。
+
+### 实验门禁与截图
+
+- Flutter 3.47.1、Dart 3.13.1、`flutter_rust_bridge` 2.13.0 环境下，`flutter build windows --release`、`flutter_rust_bridge_codegen build-web --release` 与 `flutter build web --release` 均退出码为 0。Web 产物为 `dart2js + CanvasKit`；Wasm dry-run 仅报告 hosted FRB 依赖的 `invalid_runtime_check_with_js_interop_types` 非阻塞警告。
+- 使用带 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp` 的本地 release server，并通过 Chrome DevTools Protocol 等待首帧后截取了实际页面：[CanvasKit Web Glass 验收截图](validation/liquid-glass-web-2026-08-26.png)。截图显示 Mesh Gradient、半透明 Glass 面板/操作组和中文文本均已渲染，初始搜索、候选空态和预览空态布局没有溢出。
+- Windows 调试日志记录 `Using the Impeller rendering backend (OpenGLESSDF)`，但当前环境无法取得可靠的桌面窗口像素截图；因此该记录不能替代真实 Windows 前台窗口的 Light/Dark、缩放和交互截图。
+- 尚未用真实浏览器完成 Light/Dark、缩放、长列表/正文滚动、搜索/保存 loading、键盘全流程和掉帧测量；这些仍是后续 Issue 验收项。Widget test、Web build 或 `flutter_tester` 不能代替这些运行时证据。
+
 ## 架构与生成代码
 
 Flutter 负责 Material 3 界面、键盘与无障碍交互、系统文件选择，以及平台保存或浏览器下载；Rust 负责搜索名规范化、CID 范围计划、提供方协议、候选归一化与排序、下载校验、编码检测和预览分页。
@@ -93,4 +108,3 @@ flutter run -d chrome `
 - [flutter_rust_bridge 2.13.0](https://pub.dev/packages/flutter_rust_bridge/versions/2.13.0)
 - [FRB Web 跨源说明](https://cjycode.com/flutter_rust_bridge/manual/miscellaneous/web-cross-origin)
 - [FRB WASM 限制](https://cjycode.com/flutter_rust_bridge/manual/miscellaneous/wasm-limitations)
-

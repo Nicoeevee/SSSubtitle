@@ -58,6 +58,13 @@ void main() {
       expect(controller.visiblePreviewLines.first, 'line 31');
       expect(core.requestedPages, [1, 2]);
 
+      await controller.goToPreviewPage(3);
+      expect(controller.previewPage, 2);
+      expect(controller.visiblePreviewLines.first, 'line 61');
+      expect(core.requestedPages, [1, 2, 3]);
+      await controller.goToPreviewPage(4);
+      expect(core.requestedPages, [1, 2, 3]);
+
       await controller.moveSelection(1);
       expect(controller.selectedIndex, 1);
       expect(controller.previewPage, 0);

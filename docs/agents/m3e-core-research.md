@@ -148,8 +148,8 @@ M3EMotion 提供 spatial（形状/半径）和 effects（opacity/scale）两族�
 
 - M3EShape、M3EContainer、Shapes 和 flutter_m3shapes_extended 可提供 Gem/Flower/Slanted 等 rounded polygon、clip、border/shadow/gradient。它适合品牌标记或空状态的一个视觉焦点，不适合把搜索输入、候选项和每一行字幕都裁成复杂形状。
 - M3EHorizontalFloatingToolbar、M3EVerticalFloatingToolbar、FAB 变体支持 spring 展开、滚动退出、颜色/shape/motion/accessibility。SSSubtitle 的 Search/Download/Cancel/Prev/Next 已在上下文面板中可见，并且有键盘路径；浮动工具栏会增加遮挡和焦点跳转，因此首版不采用。
-- M3ESlider、M3ERangeSlider 支持键盘焦点、tick snap、自定义 decoration/haptic；M3ESeekbar/M3EWavySeekbar 还支持 secondary buffered progress、媒体式键盘导航和不同 handle。当前 SSSubtitle 没有数值筛选设置，也没有媒体播放时间轴；不要用 slider/seekbar 代替候选选择或预览分页。
-- M3ETypography 与 M3EEmphasizedContextExtension、M3EEmphasizedTextThemeExtension、M3EEmphasizedThemeDataExtension 提供 emphasized M3 typography 入口。标题、状态和按钮标签可评估 emphasized role；预览字幕仍以等宽、可扫描和稳定换行优先，不为变量字体引入额外字体资产。
+- M3ESlider、M3ERangeSlider 支持键盘焦点、tick snap、自定义 decoration/haptic；M3ESeekbar/M3EWavySeekbar 还支持 secondary buffered progress、媒体式键盘导航和不同 handle。SSSubtitle 的字幕预览页码现在使用带离散 tick snap 的 `M3ESlider`，因为它是可直接拖动到任意页的单值分页控件；不使用面向媒体时间轴的 slider/seekbar 变体。
+- M3ETypography 与 M3EEmphasizedContextExtension、M3EEmphasizedTextThemeExtension、M3EEmphasizedThemeDataExtension 提供 emphasized M3 typography 入口。标题、状态和按钮标签可评估 emphasized role；预览字幕仍以等宽、可扫描和稳定换行优先，非英文字形回退至主题 Noto Sans SC，不为变量字体引入额外字体资产。
 
 参考：[flutter_m3shapes_extended 包页](https://pub.dev/packages/flutter_m3shapes_extended)、[m3e_floating_toolbar 包页](https://pub.dev/packages/m3e_floating_toolbar)、[m3e_slider 包页](https://pub.dev/packages/m3e_slider)、[m3e_seekbar 包页](https://pub.dev/packages/m3e_seekbar)；形状、工具栏、Slider、Seekbar、Typography 的聚合符号也可在 [m3e_core API index](https://pub.dev/documentation/m3e_core/latest/m3e_core/) 查到。
 

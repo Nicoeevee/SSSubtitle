@@ -104,12 +104,51 @@ void main() {
 
     final previewLine = tester.widget<Text>(find.text('第 1 行'));
     expect(previewLine.style?.fontFamily, 'JetBrainsMono_500');
+    expect(previewLine.style?.fontFamilyFallback, contains('NotoSansSC_500'));
+    expect(find.byKey(const Key('preview-page-slider')), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pump();
     await tester.pump();
     expect(find.text('第 2/2 页'), findsOneWidget);
     expect(find.text('第 31 行'), findsOneWidget);
+  });
+
+  testWidgets('preview page slider requests one discrete target page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(700, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final core = _WidgetCore();
+    await tester.pumpWidget(
+      SSSubtitleApp(
+        core: core,
+        videoPicker: () async => 'archive.example@documentary_episode.mp4',
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('select-video-button')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('search-button')));
+    await tester.pump();
+    await tester.pump();
+
+    final slider = find.byKey(const Key('preview-page-slider'));
+    expect(slider, findsOneWidget);
+    final sliderRect = tester.getRect(slider);
+    await tester.dragFrom(
+      Offset(sliderRect.left + 10, sliderRect.center.dy),
+      Offset(sliderRect.width - 20, 0),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+
+    expect(core.previewRequests, [1, 2]);
+    expect(find.text('第 2/2 页'), findsOneWidget);
   });
 
   testWidgets('wide layout switches Candidate and acquires it', (tester) async {
@@ -155,6 +194,8 @@ void main() {
 }
 
 class _WidgetCore implements SubtitleCore {
+  final List<int> previewRequests = [];
+
   @override
   String suggestedSearchName(String fileName) => deriveSearchName(fileName);
 
@@ -183,6 +224,7 @@ class _WidgetCore implements SubtitleCore {
     SubtitleCandidate candidate,
     int page,
   ) async {
+    previewRequests.add(page);
     final lines = List<String>.generate(45, (index) => '第 ${index + 1} 行');
     final start = (page - 1) * 30;
     return SubtitlePreviewPage(

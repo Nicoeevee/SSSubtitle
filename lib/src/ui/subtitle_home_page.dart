@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -110,17 +112,9 @@ class _SubtitleHomePageState extends State<SubtitleHomePage> {
         autofocus: true,
         child: Scaffold(
           appBar: AppBar(
-            toolbarHeight: 76,
-            title: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SSSubtitle',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                Text('字幕工作台', style: Theme.of(context).textTheme.labelMedium),
-              ],
+            title: Text(
+              'SSSubtitle',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           body: SafeArea(
@@ -531,19 +525,7 @@ class _PreviewPanel extends StatelessWidget {
             ],
             if (controller.previewPageCount > 0) ...[
               const SizedBox(height: AppSpacing.sm),
-              Semantics(
-                label:
-                    '预览进度 ${(controller.previewPage + 1)}/${controller.previewPageCount}',
-                child: M3ELinearProgressIndicator(
-                  value:
-                      (controller.previewPage + 1) /
-                      controller.previewPageCount,
-                  minHeight: 6,
-                  backgroundColor: Theme.of(context)
-                      .colorScheme
-                      .surfaceContainerHighest,
-                ),
-              ),
+              _PreviewPageSlider(controller: controller),
             ],
             const SizedBox(height: AppSpacing.sm),
             Expanded(child: _previewBody(context)),
@@ -599,14 +581,156 @@ class _PreviewPanel extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
             child: Text(
               controller.visiblePreviewLines[index],
-              style: GoogleFonts.jetBrainsMono(
-                textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onInverseSurface,
-                  height: 1.35,
-                ),
-              ),
+              style: _previewTextStyle(context),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  TextStyle _previewTextStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    final bodyStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onInverseSurface,
+      height: 1.35,
+    );
+    final previewStyle = GoogleFonts.jetBrainsMono(textStyle: bodyStyle);
+    final themeFamily = bodyStyle?.fontFamily;
+    final themeFallback = bodyStyle?.fontFamilyFallback ?? const <String>[];
+    final previewFallback =
+        previewStyle.fontFamilyFallback ?? const <String>[];
+    return previewStyle.copyWith(
+      fontFamilyFallback: <String>[
+        ...?(themeFamily == null ? null : <String>[themeFamily]),
+        ...themeFallback,
+        ...previewFallback,
+      ],
+    );
+  }
+}
+
+class _PreviewPageSlider extends StatefulWidget {
+  const _PreviewPageSlider({required this.controller});
+
+  final SubtitleController controller;
+
+  @override
+  State<_PreviewPageSlider> createState() => _PreviewPageSliderState();
+}
+
+class _PreviewPageSliderState extends State<_PreviewPageSlider> {
+  double? _draggingValue;
+  int? _pendingPage;
+  String? _interactionCandidateId;
+
+  @override
+  void didUpdateWidget(covariant _PreviewPageSlider oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final candidateId = widget.controller.selectedCandidate?.id;
+    final pageCount = widget.controller.previewPageCount;
+    final pendingPage = _pendingPage;
+
+    if (_interactionCandidateId != null &&
+        _interactionCandidateId != candidateId) {
+      _clearInteraction();
+      return;
+    }
+    if (pendingPage != null &&
+        (pendingPage > pageCount ||
+            (!widget.controller.previewLoading &&
+                widget.controller.previewPage + 1 != pendingPage))) {
+      _clearInteraction();
+    }
+  }
+
+  void _clearInteraction() {
+    _draggingValue = null;
+    _pendingPage = null;
+    _interactionCandidateId = null;
+  }
+
+  int _pageForValue(double value, int pageCount) =>
+      value.round().clamp(1, pageCount).toInt();
+
+  void _onChangeStart(double value, int pageCount) {
+    setState(() {
+      _draggingValue = value.clamp(1.0, pageCount.toDouble()).toDouble();
+      _pendingPage = null;
+      _interactionCandidateId = widget.controller.selectedCandidate?.id;
+    });
+  }
+
+  void _onChanged(double value, int pageCount) {
+    setState(() {
+      _draggingValue = value.clamp(1.0, pageCount.toDouble()).toDouble();
+    });
+  }
+
+  void _onChangeEnd(double value, int pageCount) {
+    final targetPage = _pageForValue(_draggingValue ?? value, pageCount);
+    final currentPage = widget.controller.previewPage + 1;
+    if (targetPage == currentPage) {
+      setState(_clearInteraction);
+      return;
+    }
+
+    setState(() {
+      _draggingValue = targetPage.toDouble();
+      _pendingPage = targetPage;
+      _interactionCandidateId = widget.controller.selectedCandidate?.id;
+    });
+    unawaited(widget.controller.goToPreviewPage(targetPage));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageCount = widget.controller.previewPageCount;
+    if (pageCount <= 0) return const SizedBox.shrink();
+
+    final currentPage = widget.controller.previewPage + 1;
+    final draggingValue = _draggingValue;
+    final displayedPage = draggingValue == null
+        ? currentPage
+        : _pageForValue(draggingValue, pageCount);
+    final enabled = pageCount > 1 && !widget.controller.previewLoading;
+
+    return Semantics(
+      container: true,
+      slider: true,
+      label: '预览进度',
+      value: '第 $displayedPage/$pageCount 页',
+      increasedValue: displayedPage < pageCount
+          ? '第 ${displayedPage + 1}/$pageCount 页'
+          : null,
+      decreasedValue: displayedPage > 1
+          ? '第 ${displayedPage - 1}/$pageCount 页'
+          : null,
+      onIncrease: enabled && displayedPage < pageCount
+          ? () =>
+                unawaited(widget.controller.goToPreviewPage(displayedPage + 1))
+          : null,
+      onDecrease: enabled && displayedPage > 1
+          ? () =>
+                unawaited(widget.controller.goToPreviewPage(displayedPage - 1))
+          : null,
+      child: SizedBox(
+        height: 48,
+        child: M3ESlider(
+          key: const Key('preview-page-slider'),
+          value: draggingValue ?? currentPage.toDouble(),
+          min: 1,
+          max: pageCount.toDouble(),
+          divisions: pageCount > 1 ? pageCount - 1 : null,
+          enabled: enabled,
+          label: '第 $displayedPage/$pageCount 页',
+          onChangeStart: enabled
+              ? (value) => _onChangeStart(value, pageCount)
+              : null,
+          onChanged: enabled ? (value) => _onChanged(value, pageCount) : null,
+          onChangeEnd: enabled
+              ? (value) => _onChangeEnd(value, pageCount)
+              : null,
         ),
       ),
     );

@@ -148,6 +148,14 @@ class SubtitleController extends ChangeNotifier {
     return _requestPreviewPage(previewPage + 2);
   }
 
+  /// Requests an absolute, 1-based Preview page.
+  Future<void> goToPreviewPage(int page) {
+    if (page < 1 || page > previewPageCount || page == previewPage + 1) {
+      return Future<void>.value();
+    }
+    return _requestPreviewPage(page);
+  }
+
   Future<void> _requestPreviewPage(int page) {
     final candidate = selectedCandidate;
     if (candidate == null) return Future<void>.value();

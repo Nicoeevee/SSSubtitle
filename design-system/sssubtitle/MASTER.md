@@ -53,7 +53,8 @@
 **Flutter Chinese locale override:** The native Flutter theme applies Google
 Fonts `Noto Sans SC` to every Material text role, using the bundled files in
 `assets/fonts/` so Chinese glyphs render consistently offline. The subtitle
-reading surface intentionally keeps its monospace style.
+reading surface intentionally keeps its monospace style for Latin text while
+falling back to the themed Noto Sans SC family for non-Latin glyphs.
 
 ### Spacing Variables
 

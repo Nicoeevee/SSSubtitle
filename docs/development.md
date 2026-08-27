@@ -117,9 +117,17 @@ Cross-Origin-Embedder-Policy: require-corp
 
 ```powershell
 flutter run -d chrome `
-  --web-header=Cross-Origin-Opener-Policy=same-origin `
-  --web-header=Cross-Origin-Embedder-Policy=require-corp
+  --cross-origin-isolation
 ```
+
+`--cross-origin-isolation` 会让 Flutter 开发服务器返回以下两个 HTTP 响应头，FRB 的 WASM Worker 才能传输 `SharedArrayBuffer`：
+
+```text
+Cross-Origin-Opener-Policy: same-origin
+Cross-Origin-Embedder-Policy: require-corp
+```
+
+如果缺少这些响应头，`RustLib.init()` 会在首帧之前失败，并出现类似 `DataCloneError: SharedArrayBuffer transfer requires self.crossOriginIsolated` 的错误。使用静态服务器或反向代理部署时，必须为实际页面及其资源返回相同的响应头；HTML `<meta>` 标签不能替代 HTTP 响应头，Web 构建成功也不能证明运行时已经跨源隔离。可在浏览器控制台执行 `crossOriginIsolated`，结果应为 `true`。
 
 即使应用构建成功，字幕服务仍可能拒绝浏览器跨域请求。生产环境如需中继，应仅代理明确白名单中的服务方域名，不能开放任意 URL 转发。
 

@@ -26,9 +26,10 @@ Web 还需要 Rust nightly、`rust-src`、`wasm-pack` 和 `flutter_rust_bridge_c
 flutter pub get
 flutter_rust_bridge_codegen build-web --release
 flutter run -d chrome `
-  --web-header=Cross-Origin-Opener-Policy=same-origin `
-  --web-header=Cross-Origin-Embedder-Policy=require-corp
+  --cross-origin-isolation
 ```
+
+`--cross-origin-isolation` 是 Web 版 FRB Worker 的必需启动参数；其他部署方式的响应头配置见[开发指南](docs/development.md#web-构建与部署)。
 
 浏览器能否直接访问字幕服务取决于对方的 CORS 配置；遇到跨域错误时请参阅[开发指南](docs/development.md#web-构建与部署)。
 
